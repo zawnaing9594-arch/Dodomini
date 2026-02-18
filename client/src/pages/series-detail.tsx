@@ -203,9 +203,15 @@ export default function SeriesDetail() {
           </h2>
 
           {loadingEpisodes ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-12 rounded-md" />
+            <div className="flex flex-col divide-y divide-border">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex gap-4 py-4">
+                  <Skeleton className="w-[140px] h-[80px] rounded-md shrink-0" />
+                  <div className="flex-1">
+                    <Skeleton className="h-5 w-3/4 mb-2" />
+                    <Skeleton className="h-3 w-1/3" />
+                  </div>
+                </div>
               ))}
             </div>
           ) : episodes.length === 0 ? (
@@ -214,54 +220,60 @@ export default function SeriesDetail() {
               <p className="text-muted-foreground text-sm">No episodes available yet</p>
             </Card>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-              {episodes.map((ep) => {
+            <div className="flex flex-col divide-y divide-border/50">
+              {episodes.map((ep, index) => {
                 const thumb = getVideoThumbnail(ep.videoLink) || item.poster;
                 return (
-                  <Card
-                    key={ep.epId}
-                    className="overflow-visible hover-elevate cursor-pointer group"
-                    data-testid={`card-episode-${ep.epId}`}
-                  >
-                    <Link href={getShareUrl(ep.epId)} className="block">
-                      <div className="relative aspect-video overflow-hidden rounded-t-md bg-muted">
+                  <Link key={ep.epId} href={getShareUrl(ep.epId)} className="block">
+                    <div
+                      className="flex gap-4 py-4 group cursor-pointer hover-elevate rounded-md px-1 -mx-1"
+                      data-testid={`card-episode-${ep.epId}`}
+                    >
+                      <div className="relative w-[140px] sm:w-[170px] shrink-0 aspect-video rounded-md overflow-hidden bg-muted">
                         <img
                           src={thumb}
                           alt={ep.epTitle}
                           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                           loading="lazy"
                         />
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                          <div className="w-10 h-10 rounded-full bg-primary/90 flex items-center justify-center shadow-lg">
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-8 h-8 rounded-full bg-black/50 flex items-center justify-center backdrop-blur-sm">
                             {ep.isLocked ? (
-                              <Lock className="w-4 h-4 text-white" />
+                              <Lock className="w-3.5 h-3.5 text-white" />
                             ) : (
-                              <Play className="w-4 h-4 text-white fill-white" />
+                              <Play className="w-3.5 h-3.5 text-white fill-white" />
                             )}
                           </div>
                         </div>
-                        <div className="absolute top-1.5 right-1.5 flex gap-1">
-                          {newestEpIds.has(ep.epId) && (
-                            <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-red-500 border-0 text-white">
+                        {newestEpIds.has(ep.epId) && (
+                          <div className="absolute top-1 left-1">
+                            <Badge variant="default" className="text-[9px] px-1 py-0 bg-red-500 border-0 text-white">
                               NEW
                             </Badge>
-                          )}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0 flex flex-col justify-center">
+                        <h3 className="font-semibold text-foreground text-sm sm:text-base leading-snug line-clamp-2" data-testid={`text-ep-title-${ep.epId}`}>
+                          {ep.epTitle}
+                        </h3>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className="text-xs text-muted-foreground">E{index + 1}</span>
                           {ep.isLocked && (
-                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-black/60 text-yellow-400 border-0">
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-yellow-400 border-yellow-400/30">
                               <Lock className="w-2.5 h-2.5 mr-0.5" />
                               Locked
                             </Badge>
                           )}
                         </div>
                       </div>
-                    </Link>
-                    <div className="flex items-center gap-1 p-2">
-                      <Link href={getShareUrl(ep.epId)} className="flex-1 min-w-0">
-                        <span className="text-sm font-medium truncate block" data-testid={`text-ep-title-${ep.epId}`}>{ep.epTitle}</span>
-                      </Link>
-                      <EpisodeShareButton epId={ep.epId} title={`${item.title} - ${ep.epTitle}`} />
+
+                      <div className="shrink-0 flex items-center">
+                        <EpisodeShareButton epId={ep.epId} title={`${item.title} - ${ep.epTitle}`} />
+                      </div>
                     </div>
-                  </Card>
+                  </Link>
                 );
               })}
             </div>
