@@ -93,6 +93,7 @@ function VideoPlayer({ embedUrl, videoLink }: { embedUrl: string; videoLink: str
 function VideoContainer({ embedUrl, videoLink }: { embedUrl: string; videoLink: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
 
   useEffect(() => {
     const handleChange = () => {
@@ -124,6 +125,17 @@ function VideoContainer({ embedUrl, videoLink }: { embedUrl: string; videoLink: 
     return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "PrintScreen") {
+        setIsRecording(true);
+        setTimeout(() => setIsRecording(false), 3000);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   return (
     <div
       ref={containerRef}
@@ -131,6 +143,14 @@ function VideoContainer({ embedUrl, videoLink }: { embedUrl: string; videoLink: 
       data-testid="video-container"
       onContextMenu={(e) => e.preventDefault()}
     >
+      {isRecording && (
+        <div
+          className="absolute inset-0 z-50 bg-black flex items-center justify-center"
+          data-testid="recording-overlay"
+        >
+          <p className="text-white/60 text-sm">Screen recording is not allowed</p>
+        </div>
+      )}
       <VideoPlayer embedUrl={embedUrl} videoLink={videoLink} />
       <button
         onClick={toggleFullscreen}

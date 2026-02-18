@@ -280,6 +280,7 @@
   .video-protected {
     -webkit-user-select: none;
     user-select: none;
+    -webkit-touch-callout: none;
   }
 
   /* If there's a 1px border, adjust the inset so that it covers that parent's border */

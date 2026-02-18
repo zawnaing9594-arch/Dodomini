@@ -279,15 +279,22 @@ function ContentGridSkeleton() {
 }
 
 const FONT_SIZES = [
-  { label: "S", banner: "text-2xl md:text-3xl", card: "text-xs", section: "text-lg" },
-  { label: "M", banner: "text-3xl md:text-5xl", card: "text-sm", section: "text-xl" },
-  { label: "L", banner: "text-4xl md:text-6xl", card: "text-base", section: "text-2xl" },
+  { label: "1", banner: "text-base md:text-lg", card: "text-[10px]", section: "text-xs" },
+  { label: "2", banner: "text-lg md:text-xl", card: "text-[11px]", section: "text-sm" },
+  { label: "3", banner: "text-xl md:text-2xl", card: "text-xs", section: "text-base" },
+  { label: "4", banner: "text-2xl md:text-3xl", card: "text-xs", section: "text-lg" },
+  { label: "5", banner: "text-3xl md:text-5xl", card: "text-sm", section: "text-xl" },
+  { label: "6", banner: "text-4xl md:text-6xl", card: "text-base", section: "text-2xl" },
 ];
 
 function useFontSize() {
   const [sizeIndex, setSizeIndex] = useState(() => {
-    const saved = localStorage.getItem("titleFontSize");
-    return saved ? Math.min(parseInt(saved), FONT_SIZES.length - 1) : 1;
+    try {
+      const saved = typeof window !== "undefined" ? localStorage.getItem("titleFontSize") : null;
+      return saved ? Math.min(parseInt(saved), FONT_SIZES.length - 1) : 4;
+    } catch {
+      return 4;
+    }
   });
 
   const decrease = useCallback(() => {
