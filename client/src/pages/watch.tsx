@@ -1,12 +1,12 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import { type Content, type Episode } from "@shared/schema";
-import { ArrowLeft, Lock, Play, ChevronLeft, ChevronRight, Share2, Check } from "lucide-react";
+import { ArrowLeft, Lock, Play, ChevronLeft, ChevronRight, Share2, Check, Maximize, Minimize } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { getShareUrl } from "@/lib/slugs";
@@ -86,6 +86,47 @@ function VideoPlayer({ embedUrl, videoLink }: { embedUrl: string; videoLink: str
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function VideoContainer({ embedUrl, videoLink }: { embedUrl: string; videoLink: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", handleChange);
+    return () => document.removeEventListener("fullscreenchange", handleChange);
+  }, []);
+
+  const toggleFullscreen = useCallback(async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await containerRef.current?.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch {}
+  }, []);
+
+  return (
+    <div
+      ref={containerRef}
+      className={`relative w-full bg-black group ${isFullscreen ? "h-screen" : "aspect-video max-h-[70vh]"}`}
+      data-testid="video-container"
+    >
+      <VideoPlayer embedUrl={embedUrl} videoLink={videoLink} />
+      <button
+        onClick={toggleFullscreen}
+        className="absolute bottom-3 right-3 z-10 w-9 h-9 rounded-md bg-black/60 backdrop-blur-sm flex items-center justify-center text-white/80 opacity-0 group-hover:opacity-100 transition-opacity"
+        style={{ visibility: "visible" }}
+        data-testid="button-fullscreen"
+      >
+        {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+      </button>
     </div>
   );
 }
@@ -287,9 +328,7 @@ export default function Watch() {
         </div>
       ) : (
         <>
-          <div className="w-full aspect-video max-h-[70vh] bg-black">
-            <VideoPlayer embedUrl={embedUrl} videoLink={episode.videoLink} />
-          </div>
+          <VideoContainer embedUrl={embedUrl} videoLink={episode.videoLink} />
 
           <div className="px-4 md:px-8 py-6">
             <h2 className="text-xl font-semibold mb-1" data-testid="text-now-playing">
