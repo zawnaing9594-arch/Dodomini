@@ -156,12 +156,16 @@ export default function WatchSlug() {
   const { toast } = useToast();
   const [password, setPassword] = useState("");
 
+  const decodedSeriesSlug = seriesSlug ? decodeURIComponent(seriesSlug) : "";
+  const decodedEpSlug = epSlug ? decodeURIComponent(epSlug) : "";
+
   const { data: episodeData, isLoading: loadingEp } = useQuery<{
     episode: Episode;
     parent: Content;
     allEpisodes: Episode[];
   }>({
-    queryKey: ["/api/resolve", seriesSlug, epSlug],
+    queryKey: ["/api/resolve", encodeURIComponent(decodedSeriesSlug), encodeURIComponent(decodedEpSlug)],
+    enabled: !!decodedSeriesSlug && !!decodedEpSlug,
   });
 
   const epId = episodeData?.episode?.epId;
@@ -172,7 +176,7 @@ export default function WatchSlug() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/resolve", seriesSlug, epSlug] });
+      queryClient.invalidateQueries({ queryKey: ["/api/resolve", encodeURIComponent(decodedSeriesSlug), encodeURIComponent(decodedEpSlug)] });
     },
     onError: (err: Error) => {
       toast({ title: "Wrong password", description: err.message, variant: "destructive" });
