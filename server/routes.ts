@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertContentSchema, insertEpisodeSchema } from "@shared/schema";
@@ -7,7 +7,7 @@ import path from "path";
 import fs from "fs";
 import { randomUUID } from "crypto";
 
-const uploadDir = path.join(process.cwd(), "client", "public", "uploads");
+const uploadDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -36,6 +36,8 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+
+  app.use("/uploads", express.static(uploadDir));
 
   const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
 

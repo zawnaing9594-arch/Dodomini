@@ -64,27 +64,39 @@ function ImageUploadField({
     }
   }, [onChange]);
 
+  const isUploadedOrUrl = value && (value.startsWith("/uploads/") || value.startsWith("http://") || value.startsWith("https://") || value.startsWith("/images/"));
+  const [imgError, setImgError] = useState(false);
+  const showPreview = isUploadedOrUrl && !imgError;
+
   return (
     <div className="space-y-2">
       <label className="text-sm font-medium">{label}</label>
 
-      {value ? (
+      {showPreview && (
         <div className="relative w-full rounded-md overflow-hidden border border-border bg-accent/30">
-          <img src={value} alt="Preview" className="w-full h-48 object-cover" />
+          <img
+            src={value}
+            alt="Preview"
+            className="w-full h-48 object-cover"
+            onError={() => setImgError(true)}
+            onLoad={() => setImgError(false)}
+          />
           <button
             type="button"
-            onClick={() => onChange("")}
+            onClick={() => { onChange(""); setImgError(false); }}
             className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center text-white"
           >
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
-      ) : (
+      )}
+
+      {!showPreview && (
         <div className="flex gap-2 items-start">
           <Input
             placeholder="Paste URL or upload photo"
             value={value}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(e) => { onChange(e.target.value); setImgError(false); }}
             className="flex-1"
             data-testid={`${testId}-url`}
           />
