@@ -419,11 +419,18 @@ export default function Home() {
       <footer className="border-t border-white/5 py-6 px-4 md:px-8 lg:px-12">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <p className="text-xs text-muted-foreground/50">Series Plus Myanmar</p>
-          <Link href="/admin">
-            <span className="text-xs text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors cursor-pointer" data-testid="link-admin">
-              Admin
-            </span>
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/contact">
+              <span className="text-xs text-muted-foreground/50 hover:text-muted-foreground/80 transition-colors cursor-pointer" data-testid="link-contact">
+                Contact Us
+              </span>
+            </Link>
+            <Link href="/admin">
+              <span className="text-xs text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors cursor-pointer" data-testid="link-admin">
+                Admin
+              </span>
+            </Link>
+          </div>
         </div>
       </footer>
     </div>

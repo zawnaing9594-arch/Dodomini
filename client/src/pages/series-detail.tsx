@@ -10,6 +10,20 @@ import { useToast } from "@/hooks/use-toast";
 import { useState, useCallback } from "react";
 import { getShareUrl } from "@/lib/slugs";
 
+function getVideoThumbnail(url: string): string | null {
+  try {
+    const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    if (ytMatch) return `https://img.youtube.com/vi/${ytMatch[1]}/mqdefault.jpg`;
+
+    const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+    if (vimeoMatch) return `https://vumbnail.com/${vimeoMatch[1]}.jpg`;
+
+    const dailymotionMatch = url.match(/dailymotion\.com\/video\/([a-zA-Z0-9]+)/);
+    if (dailymotionMatch) return `https://www.dailymotion.com/thumbnail/video/${dailymotionMatch[1]}`;
+  } catch {}
+  return null;
+}
+
 function EpisodeShareButton({ epId, title }: { epId: number; title: string }) {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
@@ -168,25 +182,56 @@ export default function SeriesDetail() {
             </Card>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-              {episodes.map((ep) => (
-                <Card
-                  key={ep.epId}
-                  className="p-3 hover-elevate cursor-pointer flex items-center gap-2"
-                  data-testid={`card-episode-${ep.epId}`}
-                >
-                  <Link href={getShareUrl(ep.epId)} className="flex items-center gap-2 flex-1 min-w-0">
-                    <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-                      {ep.isLocked ? (
-                        <Lock className="w-3.5 h-3.5 text-yellow-400" />
-                      ) : (
-                        <Play className="w-3.5 h-3.5 text-primary fill-primary" />
-                      )}
+              {episodes.map((ep) => {
+                const thumb = getVideoThumbnail(ep.videoLink);
+                return (
+                  <Card
+                    key={ep.epId}
+                    className="overflow-visible hover-elevate cursor-pointer group"
+                    data-testid={`card-episode-${ep.epId}`}
+                  >
+                    <Link href={getShareUrl(ep.epId)} className="block">
+                      <div className="relative aspect-video overflow-hidden rounded-t-md bg-muted">
+                        {thumb ? (
+                          <img
+                            src={thumb}
+                            alt={ep.epTitle}
+                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                            <Play className="w-8 h-8 text-primary/40" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                          <div className="w-10 h-10 rounded-full bg-primary/90 flex items-center justify-center shadow-lg">
+                            {ep.isLocked ? (
+                              <Lock className="w-4 h-4 text-white" />
+                            ) : (
+                              <Play className="w-4 h-4 text-white fill-white" />
+                            )}
+                          </div>
+                        </div>
+                        {ep.isLocked && (
+                          <div className="absolute top-1.5 right-1.5">
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-black/60 text-yellow-400 border-0">
+                              <Lock className="w-2.5 h-2.5 mr-0.5" />
+                              Locked
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
+                    </Link>
+                    <div className="flex items-center gap-1 p-2">
+                      <Link href={getShareUrl(ep.epId)} className="flex-1 min-w-0">
+                        <span className="text-sm font-medium truncate block" data-testid={`text-ep-title-${ep.epId}`}>{ep.epTitle}</span>
+                      </Link>
+                      <EpisodeShareButton epId={ep.epId} title={`${item.title} - ${ep.epTitle}`} />
                     </div>
-                    <span className="text-sm font-medium truncate">{ep.epTitle}</span>
-                  </Link>
-                  <EpisodeShareButton epId={ep.epId} title={`${item.title} - ${ep.epTitle}`} />
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>
