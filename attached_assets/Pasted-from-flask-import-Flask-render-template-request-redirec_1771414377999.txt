@@ -1,0 +1,56 @@
+from flask import Flask, render_template, request, redirect, url_for, session
+import sqlite3
+
+app = Flask(__name__)
+app.secret_key = "series_plus_myanmar_key"
+
+def get_db():
+    conn = sqlite3.connect('database.db')
+    conn.row_factory = sqlite3.Row
+    return conn
+
+# Database Table များတည်ဆောက်ခြင်း
+with get_db() as conn:
+    # Series/Movie Main Table
+    conn.execute('''CREATE TABLE IF NOT EXISTS content 
+                 (id INTEGER PRIMARY KEY, title TEXT, type TEXT, thumb TEXT, 
+                  banner TEXT, description TEXT, is_locked INTEGER, password TEXT)''')
+    # Episodes Table (Series တစ်ခုစီရဲ့ အပိုင်းများအတွက်)
+    conn.execute('''CREATE TABLE IF NOT EXISTS episodes 
+                 (ep_id INTEGER PRIMARY KEY, content_id INTEGER, ep_title TEXT, vimeo_id TEXT)''')
+
+# --- Routes ---
+
+@app.route('/')
+def index():
+    db = get_db()
+    movies = db.execute("SELECT * FROM content").fetchall()
+    banners = db.execute("SELECT * FROM content LIMIT 3").fetchall() # ပထမဆုံး ၃ ခုကို Banner တင်ရန်
+    return render_template('index.html', movies=movies, banners=banners)
+
+@app.route('/series/<int:id>')
+def series_detail(id):
+    db = get_db()
+    item = db.execute("SELECT * FROM content WHERE id=?", (id,)).fetchone()
+    episodes = db.execute("SELECT * FROM episodes WHERE content_id=?", (id,)).fetchall()
+    return render_template('detail.html', item=item, episodes=episodes)
+
+@app.route('/watch/<int:ep_id>', methods=['GET', 'POST'])
+def watch(ep_id):
+    db = get_db()
+    episode = db.execute("SELECT * FROM episodes WHERE ep_id=?", (ep_id,)).fetchone()
+    parent = db.execute("SELECT * FROM content WHERE id=?", (episode['content_id'],)).fetchone()
+    
+    # Vimeo ID Formatting
+    vid = episode['vimeo_id']
+    embed_url = f"https://player.vimeo.com/video/{vid.split('/')[-1]}"
+
+    unlocked = True
+    if parent['is_locked'] == 1:
+        unlocked = False
+        if request.method == 'POST' and request.form.get('pwd') == parent['password']:
+            unlocked = True
+            
+    return render_template('watch.html', ep=episode, parent=parent, embed_url=embed_url, unlocked=unlocked)
+
+# Admin Panel (Upload) အပိုင်းကို အရင်ပေးထားသည့်အတိုင်း ဆက်လက်အသုံးပြုနိုင်သည်
