@@ -1,14 +1,50 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import { type Content, type Episode } from "@shared/schema";
-import { ArrowLeft, Lock, Play, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Lock, Play, ChevronLeft, ChevronRight, Share2, Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+
+function ShareButton({ epId, epTitle }: { epId: number; epTitle: string }) {
+  const { toast } = useToast();
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = useCallback(async () => {
+    const url = `${window.location.origin}/watch/${epId}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: epTitle, url });
+        return;
+      } catch {}
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      toast({ title: "Link copied!" });
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast({ title: "Could not copy link", variant: "destructive" });
+    }
+  }, [epId, epTitle, toast]);
+
+  return (
+    <Button
+      size="icon"
+      variant="ghost"
+      onClick={handleShare}
+      data-testid={`button-share-${epId}`}
+    >
+      {copied ? <Check className="w-4 h-4 text-green-400" /> : <Share2 className="w-4 h-4" />}
+    </Button>
+  );
+}
 
 function VideoPlayer({ embedUrl, videoLink }: { embedUrl: string; videoLink: string }) {
   const isDirectLink = !embedUrl.includes("vimeo.com") && !embedUrl.includes("drive.google.com");
@@ -151,6 +187,7 @@ export default function Watch() {
             <p className="text-xs text-muted-foreground truncate">{parent.title}</p>
           </div>
           <div className="flex items-center gap-1">
+            <ShareButton epId={episode.epId} epTitle={`${parent.title} - ${episode.epTitle}`} />
             {prevEp && (
               <Link href={`/watch/${prevEp.epId}`}>
                 <Button size="icon" variant="ghost" data-testid="button-prev-ep">

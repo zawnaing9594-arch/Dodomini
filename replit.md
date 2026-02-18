@@ -25,6 +25,7 @@ A movie/series streaming platform built with React (frontend) + Express (backend
 - GET /api/content - List all content
 - GET /api/content/:id - Get single content
 - POST /api/content - Create content
+- PATCH /api/content/:id - Update content
 - DELETE /api/content/:id - Delete content
 - GET /api/content/:id/episodes - Get episodes for content
 - POST /api/episodes - Create single episode

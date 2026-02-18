@@ -13,6 +13,7 @@ export interface IStorage {
   getAllContent(): Promise<Content[]>;
   getContentById(id: number): Promise<Content | undefined>;
   createContent(data: InsertContent): Promise<Content>;
+  updateContent(id: number, data: Partial<InsertContent>): Promise<Content>;
   deleteContent(id: number): Promise<void>;
   getEpisodesByContentId(contentId: number): Promise<Episode[]>;
   getEpisodeById(epId: number): Promise<Episode | undefined>;
@@ -33,6 +34,11 @@ export class DatabaseStorage implements IStorage {
 
   async createContent(data: InsertContent): Promise<Content> {
     const [item] = await db.insert(content).values(data).returning();
+    return item;
+  }
+
+  async updateContent(id: number, data: Partial<InsertContent>): Promise<Content> {
+    const [item] = await db.update(content).set(data).where(eq(content.id, id)).returning();
     return item;
   }
 

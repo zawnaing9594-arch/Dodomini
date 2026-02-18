@@ -1,11 +1,50 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import { type Content, type Episode } from "@shared/schema";
-import { ArrowLeft, Play, Lock, Tv, Clock } from "lucide-react";
+import { ArrowLeft, Play, Lock, Tv, Clock, Share2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { useState, useCallback } from "react";
+
+function EpisodeShareButton({ epId, epTitle }: { epId: number; epTitle: string }) {
+  const { toast } = useToast();
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = useCallback(async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const url = `${window.location.origin}/watch/${epId}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: epTitle, url });
+        return;
+      } catch {}
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      toast({ title: "Link copied!" });
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast({ title: "Could not copy link", variant: "destructive" });
+    }
+  }, [epId, epTitle, toast]);
+
+  return (
+    <button
+      onClick={handleShare}
+      className="w-8 h-8 rounded-md flex items-center justify-center shrink-0 text-muted-foreground"
+      data-testid={`button-share-ep-${epId}`}
+    >
+      {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Share2 className="w-3.5 h-3.5" />}
+    </button>
+  );
+}
 
 export default function SeriesDetail() {
   const { id } = useParams<{ id: string }>();
@@ -129,11 +168,12 @@ export default function SeriesDetail() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
               {episodes.map((ep) => (
-                <Link key={ep.epId} href={`/watch/${ep.epId}`}>
-                  <Card
-                    className="p-3 hover-elevate cursor-pointer flex items-center gap-2"
-                    data-testid={`card-episode-${ep.epId}`}
-                  >
+                <Card
+                  key={ep.epId}
+                  className="p-3 hover-elevate cursor-pointer flex items-center gap-2"
+                  data-testid={`card-episode-${ep.epId}`}
+                >
+                  <Link href={`/watch/${ep.epId}`} className="flex items-center gap-2 flex-1 min-w-0">
                     <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
                       {ep.isLocked ? (
                         <Lock className="w-3.5 h-3.5 text-yellow-400" />
@@ -142,8 +182,9 @@ export default function SeriesDetail() {
                       )}
                     </div>
                     <span className="text-sm font-medium truncate">{ep.epTitle}</span>
-                  </Card>
-                </Link>
+                  </Link>
+                  <EpisodeShareButton epId={ep.epId} epTitle={`${item.title} - ${ep.epTitle}`} />
+                </Card>
               ))}
             </div>
           )}

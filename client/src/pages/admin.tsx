@@ -5,7 +5,7 @@ import { type Content, type Episode, insertContentSchema } from "@shared/schema"
 import { z } from "zod";
 import { Link } from "wouter";
 import {
-  Plus, Trash2, Upload, Film, ArrowLeft, ChevronDown, ChevronUp, Tv, Play, ImagePlus, X, Loader2, Lock,
+  Plus, Trash2, Upload, Film, ArrowLeft, ChevronDown, ChevronUp, Tv, Play, ImagePlus, X, Loader2, Lock, Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -25,7 +25,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 
 const contentFormSchema = insertContentSchema.extend({
   title: z.string().min(1, "Title is required"),
@@ -256,6 +256,153 @@ function AddContentDialog() {
   );
 }
 
+function EditContentDialog({ item }: { item: Content }) {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+
+  const form = useForm<ContentFormValues>({
+    resolver: zodResolver(contentFormSchema),
+    defaultValues: {
+      title: item.title,
+      type: item.type,
+      thumb: item.thumb,
+      banner: item.banner || "",
+      description: item.description || "",
+    },
+  });
+
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        title: item.title,
+        type: item.type,
+        thumb: item.thumb,
+        banner: item.banner || "",
+        description: item.description || "",
+      });
+    }
+  }, [open, item]);
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: ContentFormValues) => {
+      const res = await apiRequest("PATCH", `/api/content/${item.id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/content"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/content", String(item.id)] });
+      toast({ title: "Content updated successfully" });
+      setOpen(false);
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="icon" variant="ghost" data-testid={`button-edit-content-${item.id}`}>
+          <Pencil className="w-4 h-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Edit Content</DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit((v) => updateMutation.mutate(v))} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Title</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="Enter title" data-testid="input-edit-title" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Type</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-edit-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="series">Series</SelectItem>
+                      <SelectItem value="movie">Movie</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="thumb"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <ImageUploadField
+                      value={field.value}
+                      onChange={field.onChange}
+                      label="Thumbnail"
+                      testId="input-edit-thumb"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="banner"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <ImageUploadField
+                      value={field.value || ""}
+                      onChange={field.onChange}
+                      label="Banner (optional)"
+                      testId="input-edit-banner"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Textarea {...field} value={field.value || ""} placeholder="Description..." data-testid="input-edit-description" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button type="submit" className="w-full" disabled={updateMutation.isPending} data-testid="button-update-content">
+              {updateMutation.isPending ? "Updating..." : "Update Content"}
+            </Button>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function BulkUploadDialog({ contentId }: { contentId: number }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -445,6 +592,7 @@ function ContentAdminCard({ item }: { item: Content }) {
           <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{item.description || "No description"}</p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          <EditContentDialog item={item} />
           <Button
             size="icon"
             variant="ghost"
