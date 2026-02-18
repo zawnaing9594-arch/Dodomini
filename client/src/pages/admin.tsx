@@ -5,7 +5,7 @@ import { type Content, type Episode, insertContentSchema } from "@shared/schema"
 import { z } from "zod";
 import { Link, useLocation } from "wouter";
 import {
-  Plus, Trash2, Upload, Film, ArrowLeft, ChevronDown, ChevronUp, Tv, Play, ImagePlus, X, Loader2, Lock, Pencil, KeyRound, Star, GripVertical, Image,
+  Plus, Trash2, Upload, Film, ArrowLeft, ChevronDown, ChevronUp, Tv, Play, ImagePlus, X, Loader2, Lock, Pencil, KeyRound, Star, GripVertical, Image, Minus, Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -906,6 +906,73 @@ function BannerManagement({ allContent }: { allContent: Content[] }) {
   );
 }
 
+const FONT_SIZE_LABELS = ["XS", "S", "M", "L", "Default", "XL"];
+
+function FontSizeSettings() {
+  const [sizeIndex, setSizeIndex] = useState(() => {
+    try {
+      const saved = typeof window !== "undefined" ? localStorage.getItem("titleFontSize") : null;
+      return saved ? Math.min(parseInt(saved), 5) : 4;
+    } catch {
+      return 4;
+    }
+  });
+
+  const decrease = () => {
+    const next = Math.max(0, sizeIndex - 1);
+    setSizeIndex(next);
+    localStorage.setItem("titleFontSize", String(next));
+  };
+
+  const increase = () => {
+    const next = Math.min(5, sizeIndex + 1);
+    setSizeIndex(next);
+    localStorage.setItem("titleFontSize", String(next));
+  };
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-4">
+        <Settings className="w-5 h-5 text-primary" />
+        <h2 className="text-lg font-semibold">Display Settings</h2>
+      </div>
+      <Card className="p-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <p className="text-sm font-medium">Title Font Size</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Adjust font size for titles on the home page
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              size="icon"
+              variant="outline"
+              onClick={decrease}
+              disabled={sizeIndex === 0}
+              data-testid="button-font-decrease"
+            >
+              <Minus className="w-4 h-4" />
+            </Button>
+            <span className="text-sm font-medium w-16 text-center" data-testid="text-font-size-label">
+              {FONT_SIZE_LABELS[sizeIndex]}
+            </span>
+            <Button
+              size="icon"
+              variant="outline"
+              onClick={increase}
+              disabled={sizeIndex === 5}
+              data-testid="button-font-increase"
+            >
+              <Plus className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 export default function Admin() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -988,6 +1055,8 @@ export default function Admin() {
       </div>
 
       <div className="px-4 md:px-8 lg:px-12 py-6 max-w-4xl mx-auto space-y-8">
+        <FontSizeSettings />
+
         {allContent && allContent.length > 0 && (
           <BannerManagement allContent={allContent} />
         )}

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { type Content, type Episode } from "@shared/schema";
-import { ChevronLeft, ChevronRight, Play, Film, Bell, X, Search, Minus, Plus as PlusIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Play, Film, Bell, X, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 
-function BannerCarousel({ banners, titleClass }: { banners: Content[]; titleClass: string }) {
+function BannerCarousel({ banners }: { banners: Content[] }) {
   const [current, setCurrent] = useState(0);
 
   const next = useCallback(() => {
@@ -48,32 +48,19 @@ function BannerCarousel({ banners, titleClass }: { banners: Content[]; titleClas
         </div>
       ))}
 
-      <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12 z-10">
-        <div className="max-w-2xl">
-          <h1
-            className={`${titleClass} font-bold text-white mb-3 drop-shadow-lg`}
-            data-testid="banner-title"
-          >
-            {banner.title}
-          </h1>
-          {banner.description && (
-            <p className="text-sm md:text-base text-white/80 mb-5 line-clamp-2 max-w-lg">
-              {banner.description}
-            </p>
-          )}
-          <div className="flex items-center gap-3">
-            <Link href={`/series/${banner.id}`}>
-              <Button variant="default" data-testid="button-watch-now">
-                <Play className="w-4 h-4 mr-2 fill-current" />
-                Watch Now
-              </Button>
-            </Link>
-            <Link href={`/series/${banner.id}`}>
-              <Button variant="outline" className="bg-white/10 backdrop-blur-sm border-white/20 text-white" data-testid="button-details">
-                Details
-              </Button>
-            </Link>
-          </div>
+      <div className="absolute bottom-8 left-0 right-0 px-6 md:px-12 z-10">
+        <div className="flex items-center gap-3">
+          <Link href={`/series/${banner.id}`}>
+            <Button variant="default" data-testid="button-watch-now">
+              <Play className="w-4 h-4 mr-2 fill-current" />
+              Watch Now
+            </Button>
+          </Link>
+          <Link href={`/series/${banner.id}`}>
+            <Button variant="outline" className="bg-white/10 backdrop-blur-sm border-white/20 text-white" data-testid="button-details">
+              Details
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -329,7 +316,7 @@ export default function Home() {
     queryKey: ["/api/latest-episodes"],
   });
 
-  const { sizes, sizeIndex, decrease, increase } = useFontSize();
+  const { sizes } = useFontSize();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -381,29 +368,6 @@ export default function Home() {
             </h1>
           </Link>
           <div className="flex items-center gap-1">
-            <div className="flex items-center bg-black/30 backdrop-blur-sm rounded-md border border-white/10">
-              <Button
-                size="icon"
-                variant="ghost"
-                className="text-white/70"
-                onClick={decrease}
-                disabled={sizeIndex === 0}
-                data-testid="button-font-decrease"
-              >
-                <Minus className="w-3.5 h-3.5" />
-              </Button>
-              <span className="text-xs text-white/50 font-medium">A</span>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="text-white/70"
-                onClick={increase}
-                disabled={sizeIndex === FONT_SIZES.length - 1}
-                data-testid="button-font-increase"
-              >
-                <PlusIcon className="w-3.5 h-3.5" />
-              </Button>
-            </div>
             {searchOpen ? (
               <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm rounded-md border border-white/10 px-2">
                 <Search className="w-4 h-4 text-white/60 shrink-0" />
@@ -418,7 +382,7 @@ export default function Home() {
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="text-white/60 h-7 w-7"
+                  className="text-white/60"
                   onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
                   data-testid="button-search-close"
                 >
@@ -446,7 +410,7 @@ export default function Home() {
           {isLoading ? (
             <Skeleton className="w-full aspect-[16/9] max-h-[50vh]" />
           ) : (
-            <BannerCarousel banners={banners} titleClass={sizes.banner} />
+            <BannerCarousel banners={banners} />
           )}
         </>
       )}
