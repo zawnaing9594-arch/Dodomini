@@ -12,7 +12,7 @@ A movie/series streaming platform built with React (frontend) + Express (backend
 ## Key Features
 - Home page with banner carousel and content grid
 - Series detail page with episode listing
-- Video player supporting Vimeo, Google Drive, YouTube, and direct links
+- Video player supporting Vimeo, Google Drive, YouTube, Telegram, Facebook, Dailymotion, and direct links
 - Admin panel for content and episode management (bulk upload), password-protected
 - Password-protected premium episodes with session-based unlock (per-episode locking)
 - Direct photo upload for posters (via multer)

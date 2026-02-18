@@ -48,9 +48,10 @@ function ShareButton({ seriesTitle, epTitle }: { seriesTitle: string; epTitle: s
 }
 
 function VideoPlayer({ embedUrl, videoLink }: { embedUrl: string; videoLink: string }) {
-  const isDirectLink = !embedUrl.includes("vimeo.com") && !embedUrl.includes("drive.google.com");
+  const isDirectVideo = /\.(mp4|webm|m3u8|mov|avi|mkv)(\?.*)?$/i.test(videoLink);
+  const [iframeError, setIframeError] = useState(false);
 
-  if (isDirectLink && (videoLink.endsWith(".mp4") || videoLink.endsWith(".webm") || videoLink.endsWith(".m3u8"))) {
+  if (isDirectVideo) {
     return (
       <video
         src={videoLink}
@@ -61,14 +62,31 @@ function VideoPlayer({ embedUrl, videoLink }: { embedUrl: string; videoLink: str
     );
   }
 
+  const isGoogleDrive = embedUrl.includes("drive.google.com");
+
   return (
-    <iframe
-      src={embedUrl}
-      className="w-full h-full"
-      allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-      allowFullScreen
-      data-testid="video-iframe"
-    />
+    <div className="relative w-full h-full">
+      <iframe
+        src={embedUrl}
+        className="w-full h-full"
+        allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+        allowFullScreen
+        onError={() => setIframeError(true)}
+        data-testid="video-iframe"
+      />
+      {iframeError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/80 text-white text-center p-6">
+          <div>
+            <p className="text-lg font-medium mb-2">Video cannot be played</p>
+            <p className="text-sm text-muted-foreground">
+              {isGoogleDrive
+                ? "Google Drive video must be shared publicly (Anyone with the link)."
+                : "This video source may not support embedding."}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -99,6 +117,33 @@ function getEmbedUrl(rawLink: string): string {
     }
     if (videoId) {
       return `https://www.youtube.com/embed/${videoId}`;
+    }
+  }
+
+  if (rawLink.includes("t.me/") || rawLink.includes("telegram.me/")) {
+    const cleaned = rawLink.replace(/^https?:\/\//, "");
+    const parts = cleaned.replace(/^(t\.me|telegram\.me)\//, "").split("/");
+    if (parts.length >= 2) {
+      const channel = parts[0];
+      const msgId = parts[1].split("?")[0];
+      return `https://t.me/${channel}/${msgId}?embed=1&mode=video`;
+    }
+  }
+
+  if (rawLink.includes("facebook.com") || rawLink.includes("fb.watch") || rawLink.includes("fb.com")) {
+    const encodedUrl = encodeURIComponent(rawLink);
+    return `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=false`;
+  }
+
+  if (rawLink.includes("dailymotion.com") || rawLink.includes("dai.ly")) {
+    let dmId = "";
+    if (rawLink.includes("dai.ly/")) {
+      dmId = rawLink.split("dai.ly/")[1].split("?")[0];
+    } else if (rawLink.includes("/video/")) {
+      dmId = rawLink.split("/video/")[1].split("?")[0].split("_")[0];
+    }
+    if (dmId) {
+      return `https://www.dailymotion.com/embed/video/${dmId}`;
     }
   }
 
