@@ -31,7 +31,7 @@ function BannerCarousel({ banners }: { banners: Content[] }) {
   const banner = banners[current];
 
   return (
-    <div className="relative w-full h-[420px] md:h-[520px] overflow-hidden" data-testid="banner-carousel">
+    <div className="relative w-full h-[280px] md:h-[400px] overflow-hidden" data-testid="banner-carousel">
       {banners.map((b, i) => (
         <div
           key={b.id}
@@ -231,7 +231,7 @@ function NotificationBell() {
   );
 }
 
-function ContentCard({ item }: { item: Content }) {
+function ContentCard({ item, isNew }: { item: Content; isNew?: boolean }) {
   return (
     <Link href={`/series/${item.id}`}>
       <div className="group relative cursor-pointer" data-testid={`card-content-${item.id}`}>
@@ -247,6 +247,13 @@ function ContentCard({ item }: { item: Content }) {
               <Play className="w-5 h-5 text-white fill-white" />
             </div>
           </div>
+          {isNew && (
+            <div className="absolute top-2 left-2">
+              <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-red-500 border-0 text-white" data-testid={`badge-new-${item.id}`}>
+                NEW
+              </Badge>
+            </div>
+          )}
         </div>
         <p className="mt-2 text-sm font-medium text-foreground truncate" data-testid={`text-title-${item.id}`}>
           {item.title}
@@ -280,6 +287,10 @@ export default function Home() {
     queryKey: ["/api/banners"],
   });
 
+  const { data: latestEps } = useQuery<Array<{ episode: Episode & { contentId: number }; contentTitle: string }>>({
+    queryKey: ["/api/latest-episodes"],
+  });
+
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -291,6 +302,23 @@ export default function Home() {
   }, [searchOpen]);
 
   const banners = bannerContent && bannerContent.length > 0 ? bannerContent : (allContent?.slice(0, 5) || []);
+
+  const newContentIds = useMemo(() => {
+    if (!latestEps || !allContent) return new Set<number>();
+    const lastSeen = parseInt(localStorage.getItem("lastSeenEpId") || "0");
+    const idsWithNewEps = new Set<number>();
+    for (const item of latestEps) {
+      if (item.episode.epId > lastSeen) {
+        idsWithNewEps.add(item.episode.contentId);
+      }
+    }
+    const maxId = Math.max(...allContent.map((c) => c.id));
+    const threshold = Math.max(0, maxId - 2);
+    for (const c of allContent) {
+      if (c.id > threshold) idsWithNewEps.add(c.id);
+    }
+    return idsWithNewEps;
+  }, [latestEps, allContent]);
 
   const filteredContent = useMemo(() => {
     if (!allContent) return { series: [], movies: [] };
@@ -354,7 +382,7 @@ export default function Home() {
       {!isSearching && (
         <>
           {isLoading ? (
-            <Skeleton className="w-full h-[420px] md:h-[520px]" />
+            <Skeleton className="w-full h-[280px] md:h-[400px]" />
           ) : (
             <BannerCarousel banners={banners} />
           )}
@@ -380,7 +408,7 @@ export default function Home() {
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
               {filteredContent.series.map((item) => (
-                <ContentCard key={item.id} item={item} />
+                <ContentCard key={item.id} item={item} isNew={newContentIds.has(item.id)} />
               ))}
             </div>
           </section>
@@ -394,7 +422,7 @@ export default function Home() {
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
               {filteredContent.movies.map((item) => (
-                <ContentCard key={item.id} item={item} />
+                <ContentCard key={item.id} item={item} isNew={newContentIds.has(item.id)} />
               ))}
             </div>
           </section>

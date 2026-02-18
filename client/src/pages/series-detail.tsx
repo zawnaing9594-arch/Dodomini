@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { getShareUrl } from "@/lib/slugs";
 
 function getVideoThumbnail(url: string): string | null {
@@ -72,6 +72,15 @@ export default function SeriesDetail() {
     queryKey: ["/api/content", id, "episodes"],
   });
 
+  const episodes = episodesData || [];
+  const lockedCount = episodes.filter((ep) => ep.isLocked).length;
+  const newestEpIds = useMemo(() => {
+    if (episodes.length <= 1) return new Set<number>();
+    const sorted = [...episodes].sort((a, b) => b.epId - a.epId);
+    const recent = sorted.slice(0, Math.min(3, Math.ceil(episodes.length * 0.2)));
+    return new Set(recent.map((e) => e.epId));
+  }, [episodes]);
+
   if (loadingContent) {
     return (
       <div className="min-h-screen bg-background">
@@ -101,12 +110,9 @@ export default function SeriesDetail() {
     );
   }
 
-  const episodes = episodesData || [];
-  const lockedCount = episodes.filter((ep) => ep.isLocked).length;
-
   return (
     <div className="min-h-screen bg-background" data-testid="page-series-detail">
-      <div className="relative w-full h-[300px] md:h-[400px] overflow-hidden">
+      <div className="relative w-full h-[200px] md:h-[300px] overflow-hidden">
         <img
           src={item.poster}
           alt={item.title}
@@ -183,7 +189,7 @@ export default function SeriesDetail() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
               {episodes.map((ep) => {
-                const thumb = getVideoThumbnail(ep.videoLink);
+                const thumb = getVideoThumbnail(ep.videoLink) || item.poster;
                 return (
                   <Card
                     key={ep.epId}
@@ -192,18 +198,12 @@ export default function SeriesDetail() {
                   >
                     <Link href={getShareUrl(ep.epId)} className="block">
                       <div className="relative aspect-video overflow-hidden rounded-t-md bg-muted">
-                        {thumb ? (
-                          <img
-                            src={thumb}
-                            alt={ep.epTitle}
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                            <Play className="w-8 h-8 text-primary/40" />
-                          </div>
-                        )}
+                        <img
+                          src={thumb}
+                          alt={ep.epTitle}
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          loading="lazy"
+                        />
                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                           <div className="w-10 h-10 rounded-full bg-primary/90 flex items-center justify-center shadow-lg">
                             {ep.isLocked ? (
@@ -213,14 +213,19 @@ export default function SeriesDetail() {
                             )}
                           </div>
                         </div>
-                        {ep.isLocked && (
-                          <div className="absolute top-1.5 right-1.5">
+                        <div className="absolute top-1.5 right-1.5 flex gap-1">
+                          {newestEpIds.has(ep.epId) && (
+                            <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-red-500 border-0 text-white">
+                              NEW
+                            </Badge>
+                          )}
+                          {ep.isLocked && (
                             <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-black/60 text-yellow-400 border-0">
                               <Lock className="w-2.5 h-2.5 mr-0.5" />
                               Locked
                             </Badge>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     </Link>
                     <div className="flex items-center gap-1 p-2">
