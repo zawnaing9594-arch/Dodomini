@@ -2,6 +2,10 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import session from "express-session";
+import MemoryStore from "memorystore";
+
+const MemoryStoreSession = MemoryStore(session);
 
 const app = express();
 const httpServer = createServer(app);
@@ -11,6 +15,16 @@ declare module "http" {
     rawBody: unknown;
   }
 }
+
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "series-plus-secret",
+    resave: false,
+    saveUninitialized: false,
+    store: new MemoryStoreSession({ checkPeriod: 86400000 }),
+    cookie: { maxAge: 86400000 },
+  })
+);
 
 app.use(
   express.json({
@@ -60,6 +74,9 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  const { seedDatabase } = await import("./seed");
+  await seedDatabase().catch((err) => console.error("Seed error:", err));
+
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {

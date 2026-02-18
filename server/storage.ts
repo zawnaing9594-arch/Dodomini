@@ -1,38 +1,68 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import {
+  type Content,
+  type InsertContent,
+  type Episode,
+  type InsertEpisode,
+  content,
+  episodes,
+} from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getAllContent(): Promise<Content[]>;
+  getContentById(id: number): Promise<Content | undefined>;
+  createContent(data: InsertContent): Promise<Content>;
+  deleteContent(id: number): Promise<void>;
+  getEpisodesByContentId(contentId: number): Promise<Episode[]>;
+  getEpisodeById(epId: number): Promise<Episode | undefined>;
+  createEpisode(data: InsertEpisode): Promise<Episode>;
+  createEpisodesBulk(data: InsertEpisode[]): Promise<Episode[]>;
+  deleteEpisode(epId: number): Promise<void>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
+export class DatabaseStorage implements IStorage {
+  async getAllContent(): Promise<Content[]> {
+    return db.select().from(content);
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async getContentById(id: number): Promise<Content | undefined> {
+    const [item] = await db.select().from(content).where(eq(content.id, id));
+    return item;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+  async createContent(data: InsertContent): Promise<Content> {
+    const [item] = await db.insert(content).values(data).returning();
+    return item;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async deleteContent(id: number): Promise<void> {
+    await db.delete(episodes).where(eq(episodes.contentId, id));
+    await db.delete(content).where(eq(content.id, id));
+  }
+
+  async getEpisodesByContentId(contentId: number): Promise<Episode[]> {
+    return db.select().from(episodes).where(eq(episodes.contentId, contentId));
+  }
+
+  async getEpisodeById(epId: number): Promise<Episode | undefined> {
+    const [ep] = await db.select().from(episodes).where(eq(episodes.epId, epId));
+    return ep;
+  }
+
+  async createEpisode(data: InsertEpisode): Promise<Episode> {
+    const [ep] = await db.insert(episodes).values(data).returning();
+    return ep;
+  }
+
+  async createEpisodesBulk(data: InsertEpisode[]): Promise<Episode[]> {
+    if (data.length === 0) return [];
+    return db.insert(episodes).values(data).returning();
+  }
+
+  async deleteEpisode(epId: number): Promise<void> {
+    await db.delete(episodes).where(eq(episodes.epId, epId));
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
