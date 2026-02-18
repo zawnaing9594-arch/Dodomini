@@ -5,7 +5,7 @@ import { type Content, type Episode, insertContentSchema } from "@shared/schema"
 import { z } from "zod";
 import { Link } from "wouter";
 import {
-  Plus, Trash2, Upload, Film, ArrowLeft, ChevronDown, ChevronUp, Tv,
+  Plus, Trash2, Upload, Film, ArrowLeft, ChevronDown, ChevronUp, Tv, Play,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
