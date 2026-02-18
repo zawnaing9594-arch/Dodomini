@@ -94,7 +94,7 @@ export default function SeriesDetail() {
     <div className="min-h-screen bg-background" data-testid="page-series-detail">
       <div className="relative w-full h-[300px] md:h-[400px] overflow-hidden">
         <img
-          src={item.banner || item.thumb}
+          src={item.poster}
           alt={item.title}
           className="w-full h-full object-cover"
         />
@@ -106,7 +106,7 @@ export default function SeriesDetail() {
         <div className="flex flex-col md:flex-row gap-6 md:gap-8">
           <div className="shrink-0">
             <img
-              src={item.thumb}
+              src={item.poster}
               alt={item.title}
               className="w-[180px] md:w-[220px] rounded-md shadow-2xl"
               data-testid="img-series-thumb"

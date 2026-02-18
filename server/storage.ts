@@ -74,11 +74,11 @@ export class DatabaseStorage implements IStorage {
   async findEpisodeBySlug(seriesSlug: string, epSlug: string): Promise<{ episode: Episode; parent: Content } | null> {
     const allContent = await db.select().from(content);
     const toSlug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-    const matchedContent = allContent.find((c) => toSlug(c.title) === seriesSlug);
+    const matchedContent = allContent.find((c: Content) => toSlug(c.title) === seriesSlug);
     if (!matchedContent) return null;
 
     const allEps = await db.select().from(episodes).where(eq(episodes.contentId, matchedContent.id));
-    const matchedEp = allEps.find((ep) => toSlug(ep.epTitle) === epSlug);
+    const matchedEp = allEps.find((ep: Episode) => toSlug(ep.epTitle) === epSlug);
     if (!matchedEp) return null;
 
     return { episode: matchedEp, parent: matchedContent };

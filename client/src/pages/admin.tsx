@@ -3,9 +3,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { type Content, type Episode, insertContentSchema } from "@shared/schema";
 import { z } from "zod";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import {
-  Plus, Trash2, Upload, Film, ArrowLeft, ChevronDown, ChevronUp, Tv, Play, ImagePlus, X, Loader2, Lock, Pencil,
+  Plus, Trash2, Upload, Film, ArrowLeft, ChevronDown, ChevronUp, Tv, Play, ImagePlus, X, Loader2, Lock, Pencil, KeyRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -29,7 +29,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 
 const contentFormSchema = insertContentSchema.extend({
   title: z.string().min(1, "Title is required"),
-  thumb: z.string().min(1, "Thumbnail is required"),
+  poster: z.string().min(1, "Poster is required"),
 });
 
 type ContentFormValues = z.infer<typeof contentFormSchema>;
@@ -70,7 +70,7 @@ function ImageUploadField({
 
       {value ? (
         <div className="relative w-full rounded-md overflow-hidden border border-border bg-accent/30">
-          <img src={value} alt="Preview" className="w-full h-32 object-cover" />
+          <img src={value} alt="Preview" className="w-full h-48 object-cover" />
           <button
             type="button"
             onClick={() => onChange("")}
@@ -129,8 +129,7 @@ function AddContentDialog() {
     defaultValues: {
       title: "",
       type: "series",
-      thumb: "",
-      banner: "",
+      poster: "",
       description: "",
     },
   });
@@ -201,32 +200,15 @@ function AddContentDialog() {
             />
             <FormField
               control={form.control}
-              name="thumb"
+              name="poster"
               render={({ field }) => (
                 <FormItem>
                   <FormControl>
                     <ImageUploadField
                       value={field.value}
                       onChange={field.onChange}
-                      label="Thumbnail"
-                      testId="input-content-thumb"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="banner"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <ImageUploadField
-                      value={field.value || ""}
-                      onChange={field.onChange}
-                      label="Banner (optional)"
-                      testId="input-content-banner"
+                      label="Poster"
+                      testId="input-content-poster"
                     />
                   </FormControl>
                   <FormMessage />
@@ -265,8 +247,7 @@ function EditContentDialog({ item }: { item: Content }) {
     defaultValues: {
       title: item.title,
       type: item.type,
-      thumb: item.thumb,
-      banner: item.banner || "",
+      poster: item.poster,
       description: item.description || "",
     },
   });
@@ -276,8 +257,7 @@ function EditContentDialog({ item }: { item: Content }) {
       form.reset({
         title: item.title,
         type: item.type,
-        thumb: item.thumb,
-        banner: item.banner || "",
+        poster: item.poster,
         description: item.description || "",
       });
     }
@@ -348,32 +328,15 @@ function EditContentDialog({ item }: { item: Content }) {
             />
             <FormField
               control={form.control}
-              name="thumb"
+              name="poster"
               render={({ field }) => (
                 <FormItem>
                   <FormControl>
                     <ImageUploadField
                       value={field.value}
                       onChange={field.onChange}
-                      label="Thumbnail"
-                      testId="input-edit-thumb"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="banner"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <ImageUploadField
-                      value={field.value || ""}
-                      onChange={field.onChange}
-                      label="Banner (optional)"
-                      testId="input-edit-banner"
+                      label="Poster"
+                      testId="input-edit-poster"
                     />
                   </FormControl>
                   <FormMessage />
@@ -580,7 +543,7 @@ function ContentAdminCard({ item }: { item: Content }) {
     <Card className="p-4" data-testid={`card-admin-content-${item.id}`}>
       <div className="flex items-start gap-4">
         <img
-          src={item.thumb}
+          src={item.poster}
           alt={item.title}
           className="w-16 h-20 object-cover rounded-md shrink-0"
         />
@@ -655,7 +618,7 @@ function ContentAdminCard({ item }: { item: Content }) {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground text-center py-2">No episodes yet</p>
+            <p className="text-xs text-muted-foreground py-2">No episodes yet</p>
           )}
         </div>
       )}
@@ -664,9 +627,69 @@ function ContentAdminCard({ item }: { item: Content }) {
 }
 
 export default function Admin() {
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const [authed, setAuthed] = useState(false);
+  const [adminPassword, setAdminPassword] = useState("");
+  const [checking, setChecking] = useState(false);
+
   const { data: allContent, isLoading } = useQuery<Content[]>({
     queryKey: ["/api/content"],
+    enabled: authed,
   });
+
+  useEffect(() => {
+    fetch("/api/admin/check", { credentials: "include" })
+      .then((r) => { if (r.ok) setAuthed(true); })
+      .catch(() => {});
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setChecking(true);
+    try {
+      const res = await apiRequest("POST", "/api/admin/login", { password: adminPassword });
+      if (res.ok) {
+        setAuthed(true);
+      }
+    } catch (err: any) {
+      toast({ title: "Wrong password", variant: "destructive" });
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  if (!authed) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4" data-testid="page-admin-login">
+        <Card className="p-8 max-w-sm w-full text-center">
+          <KeyRound className="w-12 h-12 text-primary mx-auto mb-4" />
+          <h2 className="text-lg font-semibold mb-2">Admin Access</h2>
+          <p className="text-sm text-muted-foreground mb-5">
+            Enter the admin password to continue
+          </p>
+          <form onSubmit={handleLogin} className="space-y-3">
+            <Input
+              type="password"
+              value={adminPassword}
+              onChange={(e) => setAdminPassword(e.target.value)}
+              placeholder="Admin password"
+              data-testid="input-admin-password"
+            />
+            <Button type="submit" className="w-full" disabled={checking || !adminPassword} data-testid="button-admin-login">
+              {checking ? "Checking..." : "Login"}
+            </Button>
+          </form>
+          <Link href="/">
+            <Button variant="ghost" className="mt-3 w-full" data-testid="button-admin-back-home">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Home
+            </Button>
+          </Link>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background" data-testid="page-admin">

@@ -7,8 +7,7 @@ export const content = pgTable("content", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   type: text("type").notNull().default("series"),
-  thumb: text("thumb").notNull(),
-  banner: text("banner"),
+  poster: text("poster").notNull(),
   description: text("description"),
 });
 

@@ -13,12 +13,13 @@ A movie/series streaming platform built with React (frontend) + Express (backend
 - Home page with banner carousel and content grid
 - Series detail page with episode listing
 - Video player supporting Vimeo, Google Drive, YouTube, and direct links
-- Admin panel for content and episode management (bulk upload)
+- Admin panel for content and episode management (bulk upload), password-protected
 - Password-protected premium episodes with session-based unlock (per-episode locking)
-- Direct photo upload for thumbnails and banners (via multer)
+- Direct photo upload for posters (via multer)
+- SEO-friendly slug-based share URLs (e.g., /shadow-warriors/episode-1)
 
 ## Data Models
-- `content`: id, title, type (series/movie), thumb, banner, description
+- `content`: id, title, type (series/movie), poster, description
 - `episodes`: epId, contentId, epTitle, videoLink, isLocked, password
 
 ## API Endpoints
@@ -33,9 +34,18 @@ A movie/series streaming platform built with React (frontend) + Express (backend
 - DELETE /api/episodes/:epId - Delete episode
 - GET /api/watch/:epId - Get episode watch data (episode + parent + allEpisodes)
 - POST /api/watch/:epId/unlock - Unlock premium content with password
+- GET /api/resolve/:seriesSlug/:epSlug - Resolve slug-based URLs to episode data
+- POST /api/admin/login - Admin login with password
+- GET /api/admin/check - Check admin session
 
 ## Pages
 - `/` - Home (banner carousel + content grid)
 - `/series/:id` - Series/Movie detail
-- `/watch/:epId` - Video player
-- `/admin` - Admin panel
+- `/watch/:epId` - Video player (by ID)
+- `/:seriesSlug/:epSlug` - Video player (by slug, for share links)
+- `/admin` - Admin panel (password-protected, default: admin123)
+
+## Admin Access
+- Admin panel is hidden from regular users (no link on home page)
+- Access via /admin URL directly
+- Password stored in ADMIN_PASSWORD env var (default: admin123)

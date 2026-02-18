@@ -37,6 +37,24 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
 
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
+
+  app.post("/api/admin/login", (req, res) => {
+    const { password } = req.body;
+    if (password === ADMIN_PASSWORD) {
+      (req.session as any).isAdmin = true;
+      return res.json({ ok: true });
+    }
+    return res.status(403).json({ error: "Wrong password" });
+  });
+
+  app.get("/api/admin/check", (req, res) => {
+    if ((req.session as any)?.isAdmin) {
+      return res.json({ ok: true });
+    }
+    return res.status(401).json({ error: "Not authenticated" });
+  });
+
   app.get("/api/content", async (_req, res) => {
     const items = await storage.getAllContent();
     res.json(items);

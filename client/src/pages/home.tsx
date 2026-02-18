@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { type Content } from "@shared/schema";
-import { ChevronLeft, ChevronRight, Play, Film, Settings } from "lucide-react";
+import { ChevronLeft, ChevronRight, Play, Film } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useEffect, useCallback } from "react";
@@ -36,7 +36,7 @@ function BannerCarousel({ banners }: { banners: Content[] }) {
           style={{ opacity: i === current ? 1 : 0 }}
         >
           <img
-            src={b.banner || b.thumb}
+            src={b.poster}
             alt={b.title}
             className="absolute inset-0 w-full h-full object-cover"
           />
@@ -117,7 +117,7 @@ function ContentCard({ item }: { item: Content }) {
       <div className="group relative cursor-pointer" data-testid={`card-content-${item.id}`}>
         <div className="relative overflow-hidden rounded-md aspect-[3/4]">
           <img
-            src={item.thumb}
+            src={item.poster}
             alt={item.title}
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
@@ -156,7 +156,7 @@ export default function Home() {
     queryKey: ["/api/content"],
   });
 
-  const banners = allContent?.filter((c) => c.banner)?.slice(0, 5) || [];
+  const banners = allContent?.slice(0, 5) || [];
   const series = allContent?.filter((c) => c.type === "series") || [];
   const movies = allContent?.filter((c) => c.type === "movie") || [];
 
@@ -168,11 +168,6 @@ export default function Home() {
             <h1 className="text-xl font-bold tracking-tight text-white cursor-pointer" data-testid="text-logo">
               Series<span className="text-primary">Plus</span>
             </h1>
-          </Link>
-          <Link href="/admin">
-            <Button size="icon" variant="ghost" className="text-white/70" data-testid="button-admin">
-              <Settings className="w-5 h-5" />
-            </Button>
           </Link>
         </div>
       </header>
