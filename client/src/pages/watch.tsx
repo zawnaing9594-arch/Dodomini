@@ -112,11 +112,24 @@ function VideoContainer({ embedUrl, videoLink }: { embedUrl: string; videoLink: 
     } catch {}
   }, []);
 
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden" && containerRef.current) {
+        containerRef.current.style.filter = "brightness(0)";
+      } else if (containerRef.current) {
+        containerRef.current.style.filter = "";
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, []);
+
   return (
     <div
       ref={containerRef}
-      className={`relative w-full bg-black group ${isFullscreen ? "h-screen" : "aspect-video max-h-[70vh]"}`}
+      className={`relative w-full bg-black group video-protected ${isFullscreen ? "h-screen" : "aspect-video max-h-[70vh]"}`}
       data-testid="video-container"
+      onContextMenu={(e) => e.preventDefault()}
     >
       <VideoPlayer embedUrl={embedUrl} videoLink={videoLink} />
       <button

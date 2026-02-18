@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { type Content, type Episode } from "@shared/schema";
-import { ChevronLeft, ChevronRight, Play, Film, Bell, X, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Play, Film, Bell, X, Search, Minus, Plus as PlusIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 
-function BannerCarousel({ banners }: { banners: Content[] }) {
+function BannerCarousel({ banners, titleClass }: { banners: Content[]; titleClass: string }) {
   const [current, setCurrent] = useState(0);
 
   const next = useCallback(() => {
@@ -31,7 +31,7 @@ function BannerCarousel({ banners }: { banners: Content[] }) {
   const banner = banners[current];
 
   return (
-    <div className="relative w-full h-[280px] md:h-[400px] overflow-hidden" data-testid="banner-carousel">
+    <div className="relative w-full aspect-[16/9] max-h-[50vh] overflow-hidden" data-testid="banner-carousel">
       {banners.map((b, i) => (
         <div
           key={b.id}
@@ -43,15 +43,15 @@ function BannerCarousel({ banners }: { banners: Content[] }) {
             alt={b.title}
             className="absolute inset-0 w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/70 via-transparent to-transparent" />
         </div>
       ))}
 
       <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12 z-10">
         <div className="max-w-2xl">
           <h1
-            className="text-3xl md:text-5xl font-bold text-white mb-3 drop-shadow-lg"
+            className={`${titleClass} font-bold text-white mb-3 drop-shadow-lg`}
             data-testid="banner-title"
           >
             {banner.title}
@@ -231,7 +231,7 @@ function NotificationBell() {
   );
 }
 
-function ContentCard({ item, isNew }: { item: Content; isNew?: boolean }) {
+function ContentCard({ item, isNew, titleClass }: { item: Content; isNew?: boolean; titleClass?: string }) {
   return (
     <Link href={`/series/${item.id}`}>
       <div className="group relative cursor-pointer" data-testid={`card-content-${item.id}`}>
@@ -255,7 +255,7 @@ function ContentCard({ item, isNew }: { item: Content; isNew?: boolean }) {
             </div>
           )}
         </div>
-        <p className="mt-2 text-sm font-medium text-foreground truncate" data-testid={`text-title-${item.id}`}>
+        <p className={`mt-2 ${titleClass || "text-sm"} font-medium text-foreground truncate`} data-testid={`text-title-${item.id}`}>
           {item.title}
         </p>
         <p className="text-xs text-muted-foreground capitalize">{item.type}</p>
@@ -278,6 +278,37 @@ function ContentGridSkeleton() {
   );
 }
 
+const FONT_SIZES = [
+  { label: "S", banner: "text-2xl md:text-3xl", card: "text-xs", section: "text-lg" },
+  { label: "M", banner: "text-3xl md:text-5xl", card: "text-sm", section: "text-xl" },
+  { label: "L", banner: "text-4xl md:text-6xl", card: "text-base", section: "text-2xl" },
+];
+
+function useFontSize() {
+  const [sizeIndex, setSizeIndex] = useState(() => {
+    const saved = localStorage.getItem("titleFontSize");
+    return saved ? Math.min(parseInt(saved), FONT_SIZES.length - 1) : 1;
+  });
+
+  const decrease = useCallback(() => {
+    setSizeIndex((prev) => {
+      const next = Math.max(0, prev - 1);
+      localStorage.setItem("titleFontSize", String(next));
+      return next;
+    });
+  }, []);
+
+  const increase = useCallback(() => {
+    setSizeIndex((prev) => {
+      const next = Math.min(FONT_SIZES.length - 1, prev + 1);
+      localStorage.setItem("titleFontSize", String(next));
+      return next;
+    });
+  }, []);
+
+  return { sizes: FONT_SIZES[sizeIndex], sizeIndex, decrease, increase };
+}
+
 export default function Home() {
   const { data: allContent, isLoading } = useQuery<Content[]>({
     queryKey: ["/api/content"],
@@ -291,6 +322,7 @@ export default function Home() {
     queryKey: ["/api/latest-episodes"],
   });
 
+  const { sizes, sizeIndex, decrease, increase } = useFontSize();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -342,6 +374,29 @@ export default function Home() {
             </h1>
           </Link>
           <div className="flex items-center gap-1">
+            <div className="flex items-center bg-black/30 backdrop-blur-sm rounded-md border border-white/10">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="text-white/70"
+                onClick={decrease}
+                disabled={sizeIndex === 0}
+                data-testid="button-font-decrease"
+              >
+                <Minus className="w-3.5 h-3.5" />
+              </Button>
+              <span className="text-xs text-white/50 font-medium">A</span>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="text-white/70"
+                onClick={increase}
+                disabled={sizeIndex === FONT_SIZES.length - 1}
+                data-testid="button-font-increase"
+              >
+                <PlusIcon className="w-3.5 h-3.5" />
+              </Button>
+            </div>
             {searchOpen ? (
               <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm rounded-md border border-white/10 px-2">
                 <Search className="w-4 h-4 text-white/60 shrink-0" />
@@ -382,9 +437,9 @@ export default function Home() {
       {!isSearching && (
         <>
           {isLoading ? (
-            <Skeleton className="w-full h-[280px] md:h-[400px]" />
+            <Skeleton className="w-full aspect-[16/9] max-h-[50vh]" />
           ) : (
-            <BannerCarousel banners={banners} />
+            <BannerCarousel banners={banners} titleClass={sizes.banner} />
           )}
         </>
       )}
@@ -404,11 +459,11 @@ export default function Home() {
           <section>
             <div className="flex items-center gap-2 mb-5">
               <Film className="w-5 h-5 text-primary" />
-              <h2 className="text-xl font-semibold" data-testid="text-section-series">Series</h2>
+              <h2 className={`${sizes.section} font-semibold`} data-testid="text-section-series">Series</h2>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
               {filteredContent.series.map((item) => (
-                <ContentCard key={item.id} item={item} isNew={newContentIds.has(item.id)} />
+                <ContentCard key={item.id} item={item} isNew={newContentIds.has(item.id)} titleClass={sizes.card} />
               ))}
             </div>
           </section>
@@ -418,11 +473,11 @@ export default function Home() {
           <section>
             <div className="flex items-center gap-2 mb-5">
               <Film className="w-5 h-5 text-primary" />
-              <h2 className="text-xl font-semibold" data-testid="text-section-movies">Movies</h2>
+              <h2 className={`${sizes.section} font-semibold`} data-testid="text-section-movies">Movies</h2>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
               {filteredContent.movies.map((item) => (
-                <ContentCard key={item.id} item={item} isNew={newContentIds.has(item.id)} />
+                <ContentCard key={item.id} item={item} isNew={newContentIds.has(item.id)} titleClass={sizes.card} />
               ))}
             </div>
           </section>
