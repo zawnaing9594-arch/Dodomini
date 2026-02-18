@@ -14,11 +14,12 @@ A movie/series streaming platform built with React (frontend) + Express (backend
 - Series detail page with episode listing
 - Video player supporting Vimeo, Google Drive, YouTube, and direct links
 - Admin panel for content and episode management (bulk upload)
-- Password-protected premium content with session-based unlock
+- Password-protected premium episodes with session-based unlock (per-episode locking)
+- Direct photo upload for thumbnails and banners (via multer)
 
 ## Data Models
-- `content`: id, title, type (series/movie), thumb, banner, description, isLocked, password
-- `episodes`: epId, contentId, epTitle, videoLink
+- `content`: id, title, type (series/movie), thumb, banner, description
+- `episodes`: epId, contentId, epTitle, videoLink, isLocked, password
 
 ## API Endpoints
 - GET /api/content - List all content

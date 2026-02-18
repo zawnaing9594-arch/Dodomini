@@ -117,16 +117,19 @@ export async function registerRoutes(
 
     const allEpisodes = await storage.getEpisodesByContentId(parent.id);
 
-    const isLocked = parent.isLocked;
-    const unlockKey = `unlocked_${parent.id}`;
+    const isLocked = episode.isLocked;
+    const unlockKey = `unlocked_ep_${epId}`;
     const sessionUnlocked = (req.session as any)?.[unlockKey];
 
     res.json({
-      episode,
-      parent: isLocked && !sessionUnlocked
-        ? { ...parent, isLocked: true, password: undefined }
-        : { ...parent, isLocked: false, password: undefined },
-      allEpisodes,
+      episode: isLocked && !sessionUnlocked
+        ? { ...episode, isLocked: true, password: undefined }
+        : { ...episode, isLocked: false, password: undefined },
+      parent,
+      allEpisodes: allEpisodes.map((ep) => ({
+        ...ep,
+        password: undefined,
+      })),
     });
   });
 
@@ -145,15 +148,12 @@ export async function registerRoutes(
     const episode = await storage.getEpisodeById(epId);
     if (!episode) return res.status(404).json({ error: "Episode not found" });
 
-    const parent = await storage.getContentById(episode.contentId);
-    if (!parent) return res.status(404).json({ error: "Content not found" });
-
     const { password } = req.body;
-    if (password !== parent.password) {
+    if (password !== episode.password) {
       return res.status(403).json({ error: "Wrong password" });
     }
 
-    const unlockKey = `unlocked_${parent.id}`;
+    const unlockKey = `unlocked_ep_${epId}`;
     (req.session as any)[unlockKey] = true;
     res.json({ ok: true });
   });

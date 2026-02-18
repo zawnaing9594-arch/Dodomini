@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { type Content } from "@shared/schema";
-import { ChevronLeft, ChevronRight, Play, Film, Lock, Settings } from "lucide-react";
+import { ChevronLeft, ChevronRight, Play, Film, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useEffect, useCallback } from "react";
@@ -127,11 +127,6 @@ function ContentCard({ item }: { item: Content }) {
               <Play className="w-5 h-5 text-white fill-white" />
             </div>
           </div>
-          {item.isLocked && (
-            <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center">
-              <Lock className="w-3.5 h-3.5 text-yellow-400" />
-            </div>
-          )}
         </div>
         <p className="mt-2 text-sm font-medium text-foreground truncate" data-testid={`text-title-${item.id}`}>
           {item.title}

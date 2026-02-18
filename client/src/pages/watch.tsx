@@ -132,7 +132,7 @@ export default function Watch() {
   }
 
   const { episode, parent, allEpisodes } = episodeData;
-  const isLocked = parent.isLocked;
+  const isLocked = episode.isLocked;
   const embedUrl = getEmbedUrl(episode.videoLink);
 
   return (
@@ -173,9 +173,9 @@ export default function Watch() {
         <div className="flex items-center justify-center py-20 px-4">
           <Card className="p-8 max-w-sm w-full text-center">
             <Lock className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
-            <h2 className="text-lg font-semibold mb-2">Premium Content</h2>
+            <h2 className="text-lg font-semibold mb-2">Locked Episode</h2>
             <p className="text-sm text-muted-foreground mb-5">
-              Enter the password to unlock this content
+              Enter the password to unlock this episode
             </p>
             <form
               onSubmit={(e) => {
@@ -231,13 +231,17 @@ export default function Watch() {
                       }`}
                       data-testid={`card-ep-${ep.epId}`}
                     >
-                      <Play
-                        className={`w-3.5 h-3.5 shrink-0 ${
-                          ep.epId === Number(epId)
-                            ? "text-primary fill-primary"
-                            : "text-muted-foreground"
-                        }`}
-                      />
+                      {ep.isLocked ? (
+                        <Lock className="w-3.5 h-3.5 shrink-0 text-yellow-400" />
+                      ) : (
+                        <Play
+                          className={`w-3.5 h-3.5 shrink-0 ${
+                            ep.epId === Number(epId)
+                              ? "text-primary fill-primary"
+                              : "text-muted-foreground"
+                          }`}
+                        />
+                      )}
                       <span className="text-sm truncate">{ep.epTitle}</span>
                     </Card>
                   </Link>

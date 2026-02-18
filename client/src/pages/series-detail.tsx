@@ -48,6 +48,7 @@ export default function SeriesDetail() {
   }
 
   const episodes = episodesData || [];
+  const lockedCount = episodes.filter((ep) => ep.isLocked).length;
 
   return (
     <div className="min-h-screen bg-background" data-testid="page-series-detail">
@@ -75,16 +76,16 @@ export default function SeriesDetail() {
           <div className="flex-1 min-w-0 pt-2">
             <div className="flex items-center gap-3 flex-wrap mb-2">
               <Badge variant="secondary" className="capitalize">{item.type}</Badge>
-              {item.isLocked && (
-                <Badge variant="outline" className="text-yellow-400 border-yellow-400/30">
-                  <Lock className="w-3 h-3 mr-1" />
-                  Premium
-                </Badge>
-              )}
               <Badge variant="secondary">
                 <Clock className="w-3 h-3 mr-1" />
                 {episodes.length} Episodes
               </Badge>
+              {lockedCount > 0 && (
+                <Badge variant="outline" className="text-yellow-400 border-yellow-400/30">
+                  <Lock className="w-3 h-3 mr-1" />
+                  {lockedCount} Locked
+                </Badge>
+              )}
             </div>
 
             <h1 className="text-3xl md:text-4xl font-bold text-white mb-3" data-testid="text-series-title">
@@ -134,7 +135,11 @@ export default function SeriesDetail() {
                     data-testid={`card-episode-${ep.epId}`}
                   >
                     <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-                      <Play className="w-3.5 h-3.5 text-primary fill-primary" />
+                      {ep.isLocked ? (
+                        <Lock className="w-3.5 h-3.5 text-yellow-400" />
+                      ) : (
+                        <Play className="w-3.5 h-3.5 text-primary fill-primary" />
+                      )}
                     </div>
                     <span className="text-sm font-medium truncate">{ep.epTitle}</span>
                   </Card>

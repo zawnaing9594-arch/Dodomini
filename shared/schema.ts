@@ -10,8 +10,6 @@ export const content = pgTable("content", {
   thumb: text("thumb").notNull(),
   banner: text("banner"),
   description: text("description"),
-  isLocked: boolean("is_locked").notNull().default(false),
-  password: text("password"),
 });
 
 export const episodes = pgTable("episodes", {
@@ -19,6 +17,8 @@ export const episodes = pgTable("episodes", {
   contentId: integer("content_id").notNull(),
   epTitle: text("ep_title").notNull(),
   videoLink: text("video_link").notNull(),
+  isLocked: boolean("is_locked").notNull().default(false),
+  password: text("password"),
 });
 
 export const insertContentSchema = createInsertSchema(content).omit({ id: true });

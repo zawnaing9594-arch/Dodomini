@@ -5,7 +5,7 @@ import { type Content, type Episode, insertContentSchema } from "@shared/schema"
 import { z } from "zod";
 import { Link } from "wouter";
 import {
-  Plus, Trash2, Upload, Film, ArrowLeft, ChevronDown, ChevronUp, Tv, Play, ImagePlus, X, Loader2,
+  Plus, Trash2, Upload, Film, ArrowLeft, ChevronDown, ChevronUp, Tv, Play, ImagePlus, X, Loader2, Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -132,8 +132,6 @@ function AddContentDialog() {
       thumb: "",
       banner: "",
       description: "",
-      isLocked: false,
-      password: "",
     },
   });
 
@@ -248,33 +246,6 @@ function AddContentDialog() {
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="isLocked"
-              render={({ field }) => (
-                <FormItem className="flex items-center gap-3">
-                  <FormLabel className="mt-0">Lock Content</FormLabel>
-                  <FormControl>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} data-testid="switch-lock" />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            {form.watch("isLocked") && (
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input {...field} value={field.value || ""} placeholder="Enter password" data-testid="input-content-password" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
             <Button type="submit" className="w-full" disabled={createMutation.isPending} data-testid="button-submit-content">
               {createMutation.isPending ? "Adding..." : "Add Content"}
             </Button>
@@ -320,23 +291,23 @@ function BulkUploadDialog({ contentId }: { contentId: number }) {
           <DialogTitle>Bulk Upload Episodes</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium mb-1 block">Episodes (Title, Link per line)</label>
-            <Textarea
-              value={bulkText}
-              onChange={(e) => setBulkText(e.target.value)}
-              rows={8}
-              placeholder={"Episode 1, https://vimeo.com/123\nEpisode 2, https://drive.google.com/..."}
-              data-testid="textarea-bulk-links"
-            />
-          </div>
+          <p className="text-sm text-muted-foreground">
+            Enter one episode per line in the format: <strong>Title, VideoLink</strong>
+          </p>
+          <Textarea
+            value={bulkText}
+            onChange={(e) => setBulkText(e.target.value)}
+            placeholder={"Episode 1, https://vimeo.com/123\nEpisode 2, https://vimeo.com/456"}
+            className="min-h-[200px] font-mono text-sm"
+            data-testid="textarea-bulk"
+          />
           <Button
             className="w-full"
             disabled={bulkMutation.isPending || !bulkText.trim()}
             onClick={() =>
               bulkMutation.mutate({ contentId, bulkLinks: bulkText })
             }
-            data-testid="button-submit-bulk"
+            data-testid="button-bulk-submit"
           >
             {bulkMutation.isPending ? "Uploading..." : "Upload All"}
           </Button>
@@ -350,6 +321,8 @@ function AddEpisodeInline({ contentId }: { contentId: number }) {
   const { toast } = useToast();
   const [title, setTitle] = useState("");
   const [link, setLink] = useState("");
+  const [isLocked, setIsLocked] = useState(false);
+  const [password, setPassword] = useState("");
 
   const addMutation = useMutation({
     mutationFn: async () => {
@@ -357,6 +330,8 @@ function AddEpisodeInline({ contentId }: { contentId: number }) {
         contentId,
         epTitle: title,
         videoLink: link,
+        isLocked,
+        password: isLocked ? password : null,
       });
       return res.json();
     },
@@ -366,6 +341,8 @@ function AddEpisodeInline({ contentId }: { contentId: number }) {
       toast({ title: "Episode added" });
       setTitle("");
       setLink("");
+      setIsLocked(false);
+      setPassword("");
     },
     onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -373,29 +350,50 @@ function AddEpisodeInline({ contentId }: { contentId: number }) {
   });
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
-      <Input
-        placeholder="Episode title"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        className="flex-1 min-w-[120px]"
-        data-testid={`input-ep-title-${contentId}`}
-      />
-      <Input
-        placeholder="Video link"
-        value={link}
-        onChange={(e) => setLink(e.target.value)}
-        className="flex-1 min-w-[120px]"
-        data-testid={`input-ep-link-${contentId}`}
-      />
-      <Button
-        size="sm"
-        disabled={addMutation.isPending || !title || !link}
-        onClick={() => addMutation.mutate()}
-        data-testid={`button-add-ep-${contentId}`}
-      >
-        <Plus className="w-4 h-4" />
-      </Button>
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <Input
+          placeholder="Episode title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className="flex-1 min-w-[120px]"
+          data-testid={`input-ep-title-${contentId}`}
+        />
+        <Input
+          placeholder="Video link"
+          value={link}
+          onChange={(e) => setLink(e.target.value)}
+          className="flex-1 min-w-[120px]"
+          data-testid={`input-ep-link-${contentId}`}
+        />
+        <Button
+          size="sm"
+          disabled={addMutation.isPending || !title || !link}
+          onClick={() => addMutation.mutate()}
+          data-testid={`button-add-ep-${contentId}`}
+        >
+          <Plus className="w-4 h-4" />
+        </Button>
+      </div>
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={isLocked}
+            onCheckedChange={setIsLocked}
+            data-testid={`switch-ep-lock-${contentId}`}
+          />
+          <span className="text-xs text-muted-foreground">Lock episode</span>
+        </div>
+        {isLocked && (
+          <Input
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-40"
+            data-testid={`input-ep-password-${contentId}`}
+          />
+        )}
+      </div>
     </div>
   );
 }
@@ -429,6 +427,8 @@ function ContentAdminCard({ item }: { item: Content }) {
     },
   });
 
+  const lockedCount = episodes?.filter((ep) => ep.isLocked).length || 0;
+
   return (
     <Card className="p-4" data-testid={`card-admin-content-${item.id}`}>
       <div className="flex items-start gap-4">
@@ -441,9 +441,6 @@ function ContentAdminCard({ item }: { item: Content }) {
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-semibold truncate">{item.title}</h3>
             <Badge variant="secondary" className="capitalize text-xs">{item.type}</Badge>
-            {item.isLocked && (
-              <Badge variant="outline" className="text-yellow-400 border-yellow-400/30 text-xs">Premium</Badge>
-            )}
           </div>
           <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{item.description || "No description"}</p>
         </div>
@@ -472,7 +469,12 @@ function ContentAdminCard({ item }: { item: Content }) {
       {expanded && (
         <div className="mt-4 space-y-3 border-t border-border pt-4">
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <h4 className="text-sm font-medium">Episodes</h4>
+            <h4 className="text-sm font-medium">
+              Episodes
+              {lockedCount > 0 && (
+                <span className="text-xs text-yellow-400 ml-2">({lockedCount} locked)</span>
+              )}
+            </h4>
             <BulkUploadDialog contentId={item.id} />
           </div>
 
@@ -488,6 +490,9 @@ function ContentAdminCard({ item }: { item: Content }) {
                 >
                   <Play className="w-3 h-3 text-muted-foreground shrink-0" />
                   <span className="text-sm flex-1 truncate">{ep.epTitle}</span>
+                  {ep.isLocked && (
+                    <Lock className="w-3 h-3 text-yellow-400 shrink-0" />
+                  )}
                   <span className="text-xs text-muted-foreground truncate max-w-[160px]">{ep.videoLink}</span>
                   <Button
                     size="icon"
