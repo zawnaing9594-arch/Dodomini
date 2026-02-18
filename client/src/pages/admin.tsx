@@ -51,12 +51,26 @@ function ImageUploadField({
   const handleUpload = useCallback(async (file: File) => {
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("image", file);
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
-      if (!res.ok) throw new Error("Upload failed");
-      const data = await res.json();
-      onChange(data.url);
+      const metaRes = await fetch("/api/uploads/request-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: file.name,
+          size: file.size,
+          contentType: file.type,
+        }),
+      });
+      if (!metaRes.ok) throw new Error("Failed to get upload URL");
+      const { uploadURL, objectPath } = await metaRes.json();
+
+      const uploadRes = await fetch(uploadURL, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
+      });
+      if (!uploadRes.ok) throw new Error("Upload failed");
+
+      onChange(objectPath);
     } catch {
       onChange("");
     } finally {
@@ -64,7 +78,7 @@ function ImageUploadField({
     }
   }, [onChange]);
 
-  const isUploadedOrUrl = value && (value.startsWith("/uploads/") || value.startsWith("http://") || value.startsWith("https://") || value.startsWith("/images/"));
+  const isUploadedOrUrl = value && (value.startsWith("/objects/") || value.startsWith("/uploads/") || value.startsWith("http://") || value.startsWith("https://") || value.startsWith("/images/"));
   const [imgError, setImgError] = useState(false);
   const showPreview = isUploadedOrUrl && !imgError;
 

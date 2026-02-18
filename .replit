@@ -43,3 +43,6 @@ waitForPort = 5000
 
 [userenv.shared]
 ADMIN_PASSWORD = "admin123"
+
+[agent]
+integrations = ["javascript_object_storage:2.0.0"]
