@@ -43,6 +43,7 @@ waitForPort = 5000
 
 [userenv.shared]
 ADMIN_PASSWORD = "admin123"
+GA_MEASUREMENT_ID = "G-JEY9EVY71R"
 
 [agent]
 integrations = ["javascript_object_storage:2.0.0"]
