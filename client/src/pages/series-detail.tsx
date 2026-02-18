@@ -64,6 +64,27 @@ function EpisodeShareButton({ epId, title }: { epId: number; title: string }) {
 export default function SeriesDetail() {
   const { id } = useParams<{ id: string }>();
 
+  const [copied, setCopied] = useState(false);
+  const { toast } = useToast();
+
+  const handleShareSeries = useCallback(async () => {
+    const url = `${window.location.origin}/series/${id}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `Series Plus Myanmar`, url });
+        return;
+      } catch {}
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      toast({ title: "Link copied!", description: "Share URL copied to clipboard" });
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast({ title: "Unable to copy", description: url, variant: "destructive" });
+    }
+  }, [id, toast]);
+
   const { data: item, isLoading: loadingContent } = useQuery<Content>({
     queryKey: ["/api/content", id],
   });
@@ -158,14 +179,20 @@ export default function SeriesDetail() {
               </p>
             )}
 
-            {episodes.length > 0 && (
-              <Link href={getShareUrl(episodes[0].epId)}>
-                <Button variant="default" data-testid="button-play-first">
-                  <Play className="w-4 h-4 mr-2 fill-current" />
-                  Play Episode 1
-                </Button>
-              </Link>
-            )}
+            <div className="flex items-center gap-3 flex-wrap">
+              {episodes.length > 0 && (
+                <Link href={getShareUrl(episodes[0].epId)}>
+                  <Button variant="default" data-testid="button-play-first">
+                    <Play className="w-4 h-4 mr-2 fill-current" />
+                    Play Episode 1
+                  </Button>
+                </Link>
+              )}
+              <Button variant="outline" onClick={handleShareSeries} data-testid="button-share-series">
+                {copied ? <Check className="w-4 h-4 mr-2" /> : <Share2 className="w-4 h-4 mr-2" />}
+                {copied ? "Copied!" : "Share"}
+              </Button>
+            </div>
           </div>
         </div>
 

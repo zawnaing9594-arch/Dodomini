@@ -9,7 +9,6 @@ import SeriesDetail from "@/pages/series-detail";
 import Watch from "@/pages/watch";
 import WatchSlug from "@/pages/watch-slug";
 import Admin from "@/pages/admin";
-import Contact from "@/pages/contact";
 
 function Router() {
   return (
@@ -19,7 +18,6 @@ function Router() {
       <Route path="/watch/:epId" component={Watch} />
       <Route path="/e/:epId" component={Watch} />
       <Route path="/admin" component={Admin} />
-      <Route path="/contact" component={Contact} />
       <Route path="/:seriesSlug/:epSlug" component={WatchSlug} />
       <Route component={NotFound} />
     </Switch>

@@ -5,6 +5,7 @@ A movie/series streaming platform built with React (frontend) + Express (backend
 
 ## Architecture
 - **Frontend**: React + TypeScript + TailwindCSS + shadcn/ui
+- **Fonts**: Inter (English) + Noto Sans Myanmar (Myanmar script) via Google Fonts
 - **Backend**: Express.js with session support
 - **Database**: PostgreSQL with Drizzle ORM
 - **Storage**: Replit Object Storage (for persistent poster uploads)
