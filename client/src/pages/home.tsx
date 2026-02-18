@@ -1,10 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { type Content } from "@shared/schema";
-import { ChevronLeft, ChevronRight, Play, Film } from "lucide-react";
+import { type Content, type Episode } from "@shared/schema";
+import { ChevronLeft, ChevronRight, Play, Film, Bell, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 
 function BannerCarousel({ banners }: { banners: Content[] }) {
   const [current, setCurrent] = useState(0);
@@ -111,6 +113,123 @@ function BannerCarousel({ banners }: { banners: Content[] }) {
   );
 }
 
+function NotificationBell() {
+  const [showPanel, setShowPanel] = useState(false);
+  const [lastSeenId, setLastSeenId] = useState(() => {
+    return parseInt(localStorage.getItem("lastSeenEpId") || "0");
+  });
+
+  const { data: latestEps } = useQuery<Array<{ episode: Episode; contentTitle: string }>>({
+    queryKey: ["/api/latest-episodes"],
+    refetchInterval: 30000,
+  });
+
+  const newCount = useMemo(() => {
+    if (!latestEps) return 0;
+    return latestEps.filter((e) => e.episode.epId > lastSeenId).length;
+  }, [latestEps, lastSeenId]);
+
+  useEffect(() => {
+    if (!latestEps || latestEps.length === 0) return;
+    const maxId = Math.max(...latestEps.map((e) => e.episode.epId));
+    if (lastSeenId === 0) {
+      localStorage.setItem("lastSeenEpId", String(maxId));
+      setLastSeenId(maxId);
+      return;
+    }
+    if (newCount > 0 && "Notification" in window && Notification.permission === "granted") {
+      const newest = latestEps[0];
+      new Notification("Series Plus Myanmar", {
+        body: `${newest.contentTitle} - ${newest.episode.epTitle}`,
+        icon: "/icon-192.png",
+      });
+    }
+  }, [latestEps]);
+
+  const markAllSeen = () => {
+    if (latestEps && latestEps.length > 0) {
+      const maxId = Math.max(...latestEps.map((e) => e.episode.epId));
+      localStorage.setItem("lastSeenEpId", String(maxId));
+      setLastSeenId(maxId);
+    }
+    setShowPanel(false);
+  };
+
+  const requestNotificationPermission = async () => {
+    if ("Notification" in window && Notification.permission === "default") {
+      await Notification.requestPermission();
+    }
+  };
+
+  return (
+    <div className="relative">
+      <Button
+        size="icon"
+        variant="ghost"
+        className="relative text-white/80"
+        onClick={() => {
+          setShowPanel(!showPanel);
+          requestNotificationPermission();
+        }}
+        data-testid="button-notifications"
+      >
+        <Bell className="w-5 h-5" />
+        {newCount > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 text-[10px] font-bold text-white flex items-center justify-center" data-testid="badge-new-count">
+            {newCount > 9 ? "9+" : newCount}
+          </span>
+        )}
+      </Button>
+
+      {showPanel && (
+        <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 z-50">
+          <Card className="p-0 overflow-hidden shadow-xl">
+            <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border">
+              <span className="text-sm font-medium">New Episodes</span>
+              <div className="flex items-center gap-1">
+                {newCount > 0 && (
+                  <Button size="sm" variant="ghost" onClick={markAllSeen} className="text-xs h-7" data-testid="button-mark-seen">
+                    Mark all read
+                  </Button>
+                )}
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setShowPanel(false)}>
+                  <X className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
+            <div className="max-h-64 overflow-y-auto">
+              {!latestEps || latestEps.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-6">No episodes yet</p>
+              ) : (
+                latestEps.slice(0, 10).map((item) => {
+                  const isNew = item.episode.epId > lastSeenId;
+                  return (
+                    <Link key={item.episode.epId} href={`/e/${item.episode.epId}`}>
+                      <div
+                        className={`flex items-center gap-2 px-3 py-2 hover-elevate cursor-pointer ${isNew ? "bg-primary/5" : ""}`}
+                        data-testid={`notification-ep-${item.episode.epId}`}
+                      >
+                        <Play className="w-3 h-3 text-muted-foreground shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm truncate">{item.episode.epTitle}</p>
+                          <p className="text-xs text-muted-foreground truncate">{item.contentTitle}</p>
+                        </div>
+                        {isNew && (
+                          <Badge variant="default" className="text-[10px] px-1.5 py-0">NEW</Badge>
+                        )}
+                      </div>
+                    </Link>
+                  );
+                })
+              )}
+            </div>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ContentCard({ item }: { item: Content }) {
   return (
     <Link href={`/series/${item.id}`}>
@@ -173,6 +292,7 @@ export default function Home() {
               Series<span className="text-primary">Plus</span>
             </h1>
           </Link>
+          <NotificationBell />
         </div>
       </header>
 

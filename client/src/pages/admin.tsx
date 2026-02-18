@@ -534,6 +534,109 @@ function AddEpisodeInline({ contentId }: { contentId: number }) {
   );
 }
 
+function EditEpisodeDialog({ ep, contentId }: { ep: Episode; contentId: number }) {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [epTitle, setEpTitle] = useState(ep.epTitle);
+  const [videoLink, setVideoLink] = useState(ep.videoLink);
+  const [isLocked, setIsLocked] = useState(ep.isLocked);
+  const [password, setPassword] = useState("");
+
+  useEffect(() => {
+    if (open) {
+      setEpTitle(ep.epTitle);
+      setVideoLink(ep.videoLink);
+      setIsLocked(ep.isLocked);
+      setPassword("");
+    }
+  }, [open, ep]);
+
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      const body: any = { epTitle, videoLink, isLocked };
+      if (isLocked && password) body.password = password;
+      if (!isLocked) body.password = "";
+      const res = await apiRequest("PATCH", `/api/episodes/${ep.epId}`, body);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/content", String(contentId), "episodes"] });
+      toast({ title: "Episode updated" });
+      setOpen(false);
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-6 w-6"
+          data-testid={`button-edit-ep-${ep.epId}`}
+        >
+          <Pencil className="w-3 h-3" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Edit Episode</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Title</label>
+            <Input
+              value={epTitle}
+              onChange={(e) => setEpTitle(e.target.value)}
+              placeholder="Episode title"
+              data-testid={`input-edit-ep-title-${ep.epId}`}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Video Link</label>
+            <Input
+              value={videoLink}
+              onChange={(e) => setVideoLink(e.target.value)}
+              placeholder="Video link"
+              data-testid={`input-edit-ep-link-${ep.epId}`}
+            />
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={isLocked}
+                onCheckedChange={setIsLocked}
+                data-testid={`switch-edit-ep-lock-${ep.epId}`}
+              />
+              <span className="text-sm">Lock episode</span>
+            </div>
+            {isLocked && (
+              <Input
+                placeholder="New password (leave empty to keep current)"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="flex-1 min-w-[160px]"
+                data-testid={`input-edit-ep-password-${ep.epId}`}
+              />
+            )}
+          </div>
+          <Button
+            className="w-full"
+            disabled={updateMutation.isPending || !epTitle || !videoLink}
+            onClick={() => updateMutation.mutate()}
+            data-testid={`button-update-ep-${ep.epId}`}
+          >
+            {updateMutation.isPending ? "Updating..." : "Update Episode"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function ContentAdminCard({ item }: { item: Content }) {
   const { toast } = useToast();
   const [expanded, setExpanded] = useState(false);
@@ -631,6 +734,7 @@ function ContentAdminCard({ item }: { item: Content }) {
                     <Lock className="w-3 h-3 text-yellow-400 shrink-0" />
                   )}
                   <span className="text-xs text-muted-foreground truncate max-w-[160px]">{ep.videoLink}</span>
+                  <EditEpisodeDialog ep={ep} contentId={item.id} />
                   <Button
                     size="icon"
                     variant="ghost"

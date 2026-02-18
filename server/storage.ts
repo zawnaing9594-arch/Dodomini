@@ -19,6 +19,7 @@ export interface IStorage {
   getEpisodeById(epId: number): Promise<Episode | undefined>;
   createEpisode(data: InsertEpisode): Promise<Episode>;
   createEpisodesBulk(data: InsertEpisode[]): Promise<Episode[]>;
+  updateEpisode(epId: number, data: Partial<InsertEpisode>): Promise<Episode>;
   deleteEpisode(epId: number): Promise<void>;
   findEpisodeBySlug(seriesSlug: string, epSlug: string): Promise<{ episode: Episode; parent: Content } | null>;
   getBannerContent(): Promise<Content[]>;
@@ -67,6 +68,11 @@ export class DatabaseStorage implements IStorage {
   async createEpisodesBulk(data: InsertEpisode[]): Promise<Episode[]> {
     if (data.length === 0) return [];
     return db.insert(episodes).values(data).returning();
+  }
+
+  async updateEpisode(epId: number, data: Partial<InsertEpisode>): Promise<Episode> {
+    const [ep] = await db.update(episodes).set(data).where(eq(episodes.epId, epId)).returning();
+    return ep;
   }
 
   async deleteEpisode(epId: number): Promise<void> {

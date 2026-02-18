@@ -99,6 +99,22 @@ export async function registerRoutes(
     res.json({ count: inserted.length });
   });
 
+  app.patch("/api/episodes/:epId", async (req, res) => {
+    if (!(req.session as any)?.isAdmin) return res.status(401).json({ error: "Not authenticated" });
+    const epId = parseInt(req.params.epId);
+    if (isNaN(epId)) return res.status(400).json({ error: "Invalid ID" });
+    const existing = await storage.getEpisodeById(epId);
+    if (!existing) return res.status(404).json({ error: "Episode not found" });
+    const { isLocked, password, epTitle, videoLink } = req.body;
+    const updateData: any = {};
+    if (typeof isLocked === "boolean") updateData.isLocked = isLocked;
+    if (typeof password === "string") updateData.password = password || null;
+    if (typeof epTitle === "string" && epTitle.trim()) updateData.epTitle = epTitle.trim();
+    if (typeof videoLink === "string" && videoLink.trim()) updateData.videoLink = videoLink.trim();
+    const ep = await storage.updateEpisode(epId, updateData);
+    res.json({ ...ep, password: undefined });
+  });
+
   app.delete("/api/episodes/:epId", async (req, res) => {
     const epId = parseInt(req.params.epId);
     if (isNaN(epId)) return res.status(400).json({ error: "Invalid ID" });
@@ -196,6 +212,24 @@ export async function registerRoutes(
     const unlockKey = `unlocked_ep_${epId}`;
     (req.session as any)[unlockKey] = true;
     res.json({ ok: true });
+  });
+
+  app.get("/api/analytics-id", (_req, res) => {
+    const id = process.env.GA_MEASUREMENT_ID || "";
+    res.json({ id });
+  });
+
+  app.get("/api/latest-episodes", async (_req, res) => {
+    const allContent = await storage.getAllContent();
+    const latestEps: Array<{ episode: any; contentTitle: string }> = [];
+    for (const c of allContent) {
+      const eps = await storage.getEpisodesByContentId(c.id);
+      for (const ep of eps) {
+        latestEps.push({ episode: { ...ep, password: undefined }, contentTitle: c.title });
+      }
+    }
+    latestEps.sort((a, b) => b.episode.epId - a.episode.epId);
+    res.json(latestEps.slice(0, 20));
   });
 
   return httpServer;
