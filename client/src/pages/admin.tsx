@@ -5,7 +5,7 @@ import { type Content, type Episode, insertContentSchema } from "@shared/schema"
 import { z } from "zod";
 import { Link } from "wouter";
 import {
-  Plus, Trash2, Upload, Film, ArrowLeft, ChevronDown, ChevronUp, Tv, Play,
+  Plus, Trash2, Upload, Film, ArrowLeft, ChevronDown, ChevronUp, Tv, Play, ImagePlus, X, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -25,14 +25,100 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 
 const contentFormSchema = insertContentSchema.extend({
   title: z.string().min(1, "Title is required"),
-  thumb: z.string().min(1, "Thumbnail URL is required"),
+  thumb: z.string().min(1, "Thumbnail is required"),
 });
 
 type ContentFormValues = z.infer<typeof contentFormSchema>;
+
+function ImageUploadField({
+  value,
+  onChange,
+  label,
+  testId,
+}: {
+  value: string;
+  onChange: (url: string) => void;
+  label: string;
+  testId: string;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleUpload = useCallback(async (file: File) => {
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      if (!res.ok) throw new Error("Upload failed");
+      const data = await res.json();
+      onChange(data.url);
+    } catch {
+      onChange("");
+    } finally {
+      setUploading(false);
+    }
+  }, [onChange]);
+
+  return (
+    <div className="space-y-2">
+      <label className="text-sm font-medium">{label}</label>
+
+      {value ? (
+        <div className="relative w-full rounded-md overflow-hidden border border-border bg-accent/30">
+          <img src={value} alt="Preview" className="w-full h-32 object-cover" />
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center text-white"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      ) : (
+        <div className="flex gap-2 items-start">
+          <Input
+            placeholder="Paste URL or upload photo"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="flex-1"
+            data-testid={`${testId}-url`}
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={uploading}
+            onClick={() => fileRef.current?.click()}
+            data-testid={`${testId}-upload`}
+          >
+            {uploading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <ImagePlus className="w-4 h-4" />
+            )}
+          </Button>
+        </div>
+      )}
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleUpload(file);
+          e.target.value = "";
+        }}
+        data-testid={`${testId}-file`}
+      />
+    </div>
+  );
+}
 
 function AddContentDialog() {
   const { toast } = useToast();
@@ -120,9 +206,13 @@ function AddContentDialog() {
               name="thumb"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Thumbnail URL</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="https://..." data-testid="input-content-thumb" />
+                    <ImageUploadField
+                      value={field.value}
+                      onChange={field.onChange}
+                      label="Thumbnail"
+                      testId="input-content-thumb"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -133,9 +223,13 @@ function AddContentDialog() {
               name="banner"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Banner URL (optional)</FormLabel>
                   <FormControl>
-                    <Input {...field} value={field.value || ""} placeholder="https://..." data-testid="input-content-banner" />
+                    <ImageUploadField
+                      value={field.value || ""}
+                      onChange={field.onChange}
+                      label="Banner (optional)"
+                      testId="input-content-banner"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
