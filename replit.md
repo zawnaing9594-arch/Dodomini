@@ -18,7 +18,7 @@ A movie/series streaming platform built with React (frontend) + Express (backend
 - Banner carousel management (select content, reorder) in admin panel
 - Password-protected premium episodes with session-based unlock (per-episode locking)
 - Poster upload via Replit Object Storage (persistent across redeployments)
-- SEO-friendly slug-based share URLs (e.g., /shadow-warriors/episode-1)
+- Short share URLs using episode ID (e.g., /e/64)
 
 ## Data Models
 - `content`: id, title, type (series/movie), poster, description, isBanner, bannerOrder
@@ -48,8 +48,9 @@ A movie/series streaming platform built with React (frontend) + Express (backend
 ## Pages
 - `/` - Home (banner carousel + content grid)
 - `/series/:id` - Series/Movie detail
-- `/watch/:epId` - Video player (by ID)
-- `/:seriesSlug/:epSlug` - Video player (by slug, for share links)
+- `/watch/:epId` - Video player (by ID, internal)
+- `/e/:epId` - Video player (short share URL, e.g. /e/64)
+- `/:seriesSlug/:epSlug` - Video player (legacy slug-based, backward compatible)
 - `/admin` - Admin panel (password-protected, default: admin123)
 
 ## Admin Access

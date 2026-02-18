@@ -10,18 +10,18 @@ import { useToast } from "@/hooks/use-toast";
 import { useState, useCallback } from "react";
 import { getShareUrl } from "@/lib/slugs";
 
-function EpisodeShareButton({ seriesTitle, epTitle }: { seriesTitle: string; epTitle: string }) {
+function EpisodeShareButton({ epId, title }: { epId: number; title: string }) {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
 
   const handleShare = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const url = `${window.location.origin}${getShareUrl(seriesTitle, epTitle)}`;
+    const url = `${window.location.origin}${getShareUrl(epId)}`;
 
     if (navigator.share) {
       try {
-        await navigator.share({ title: `${seriesTitle} - ${epTitle}`, url });
+        await navigator.share({ title, url });
         return;
       } catch {}
     }
@@ -34,13 +34,13 @@ function EpisodeShareButton({ seriesTitle, epTitle }: { seriesTitle: string; epT
     } catch {
       toast({ title: "Could not copy link", variant: "destructive" });
     }
-  }, [seriesTitle, epTitle, toast]);
+  }, [epId, title, toast]);
 
   return (
     <button
       onClick={handleShare}
       className="w-8 h-8 rounded-md flex items-center justify-center shrink-0 text-muted-foreground"
-      data-testid={`button-share-ep-${seriesTitle}-${epTitle}`}
+      data-testid={`button-share-ep-${epId}`}
     >
       {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Share2 className="w-3.5 h-3.5" />}
     </button>
@@ -139,7 +139,7 @@ export default function SeriesDetail() {
             )}
 
             {episodes.length > 0 && (
-              <Link href={getShareUrl(item.title, episodes[0].epTitle)}>
+              <Link href={getShareUrl(episodes[0].epId)}>
                 <Button variant="default" data-testid="button-play-first">
                   <Play className="w-4 h-4 mr-2 fill-current" />
                   Play Episode 1
@@ -174,7 +174,7 @@ export default function SeriesDetail() {
                   className="p-3 hover-elevate cursor-pointer flex items-center gap-2"
                   data-testid={`card-episode-${ep.epId}`}
                 >
-                  <Link href={getShareUrl(item.title, ep.epTitle)} className="flex items-center gap-2 flex-1 min-w-0">
+                  <Link href={getShareUrl(ep.epId)} className="flex items-center gap-2 flex-1 min-w-0">
                     <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
                       {ep.isLocked ? (
                         <Lock className="w-3.5 h-3.5 text-yellow-400" />
@@ -184,7 +184,7 @@ export default function SeriesDetail() {
                     </div>
                     <span className="text-sm font-medium truncate">{ep.epTitle}</span>
                   </Link>
-                  <EpisodeShareButton seriesTitle={item.title} epTitle={ep.epTitle} />
+                  <EpisodeShareButton epId={ep.epId} title={`${item.title} - ${ep.epTitle}`} />
                 </Card>
               ))}
             </div>

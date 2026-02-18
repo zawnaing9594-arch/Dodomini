@@ -16,6 +16,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/series/:id" component={SeriesDetail} />
       <Route path="/watch/:epId" component={Watch} />
+      <Route path="/e/:epId" component={Watch} />
       <Route path="/admin" component={Admin} />
       <Route path="/:seriesSlug/:epSlug" component={WatchSlug} />
       <Route component={NotFound} />
