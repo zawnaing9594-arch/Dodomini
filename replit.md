@@ -7,19 +7,21 @@ A movie/series streaming platform built with React (frontend) + Express (backend
 - **Frontend**: React + TypeScript + TailwindCSS + shadcn/ui
 - **Backend**: Express.js with session support
 - **Database**: PostgreSQL with Drizzle ORM
+- **Storage**: Replit Object Storage (for persistent poster uploads)
 - **Routing**: wouter (frontend), Express routes (backend)
 
 ## Key Features
-- Home page with banner carousel and content grid
+- Home page with banner carousel (admin-configurable) and content grid
 - Series detail page with episode listing
 - Video player supporting Vimeo, Google Drive, YouTube, Telegram, Facebook, Dailymotion, and direct links
 - Admin panel for content and episode management (bulk upload), password-protected
+- Banner carousel management (select content, reorder) in admin panel
 - Password-protected premium episodes with session-based unlock (per-episode locking)
-- Direct photo upload for posters (via multer)
+- Poster upload via Replit Object Storage (persistent across redeployments)
 - SEO-friendly slug-based share URLs (e.g., /shadow-warriors/episode-1)
 
 ## Data Models
-- `content`: id, title, type (series/movie), poster, description
+- `content`: id, title, type (series/movie), poster, description, isBanner, bannerOrder
 - `episodes`: epId, contentId, epTitle, videoLink, isLocked, password
 
 ## API Endpoints
@@ -35,6 +37,11 @@ A movie/series streaming platform built with React (frontend) + Express (backend
 - GET /api/watch/:epId - Get episode watch data (episode + parent + allEpisodes)
 - POST /api/watch/:epId/unlock - Unlock premium content with password
 - GET /api/resolve/:seriesSlug/:epSlug - Resolve slug-based URLs to episode data
+- GET /api/banners - Get banner content (ordered)
+- POST /api/banners/toggle - Toggle banner status (admin-only)
+- POST /api/banners/reorder - Reorder banners atomically (admin-only)
+- POST /api/uploads/request-url - Get presigned URL for file upload (admin-only)
+- GET /objects/* - Serve uploaded files from object storage
 - POST /api/admin/login - Admin login with password
 - GET /api/admin/check - Check admin session
 
@@ -46,6 +53,12 @@ A movie/series streaming platform built with React (frontend) + Express (backend
 - `/admin` - Admin panel (password-protected, default: admin123)
 
 ## Admin Access
-- Admin panel is hidden from regular users (no link on home page)
+- Admin panel accessible via subtle footer link on home page
 - Access via /admin URL directly
 - Password stored in ADMIN_PASSWORD env var (default: admin123)
+
+## File Upload Flow
+- Uses two-step presigned URL flow via Replit Object Storage
+- Step 1: POST /api/uploads/request-url (sends file metadata, gets presigned URL)
+- Step 2: PUT to presigned URL (uploads file directly to cloud storage)
+- Uploaded files served via /objects/* route

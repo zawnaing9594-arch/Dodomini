@@ -9,6 +9,8 @@ export const content = pgTable("content", {
   type: text("type").notNull().default("series"),
   poster: text("poster").notNull(),
   description: text("description"),
+  isBanner: boolean("is_banner").notNull().default(false),
+  bannerOrder: integer("banner_order").notNull().default(0),
 });
 
 export const episodes = pgTable("episodes", {

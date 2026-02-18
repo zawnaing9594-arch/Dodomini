@@ -5,7 +5,7 @@ import { type Content, type Episode, insertContentSchema } from "@shared/schema"
 import { z } from "zod";
 import { Link, useLocation } from "wouter";
 import {
-  Plus, Trash2, Upload, Film, ArrowLeft, ChevronDown, ChevronUp, Tv, Play, ImagePlus, X, Loader2, Lock, Pencil, KeyRound,
+  Plus, Trash2, Upload, Film, ArrowLeft, ChevronDown, ChevronUp, Tv, Play, ImagePlus, X, Loader2, Lock, Pencil, KeyRound, Star, GripVertical, Image,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -652,6 +652,156 @@ function ContentAdminCard({ item }: { item: Content }) {
   );
 }
 
+function BannerManagement({ allContent }: { allContent: Content[] }) {
+  const { toast } = useToast();
+
+  const { data: banners } = useQuery<Content[]>({
+    queryKey: ["/api/banners"],
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: async ({ id, isBanner, bannerOrder }: { id: number; isBanner: boolean; bannerOrder: number }) => {
+      const res = await apiRequest("POST", "/api/banners/toggle", { id, isBanner, bannerOrder });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/banners"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/content"] });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const reorderMutation = useMutation({
+    mutationFn: async (orderedIds: number[]) => {
+      const res = await apiRequest("POST", "/api/banners/reorder", { orderedIds });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/banners"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/content"] });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const bannerIds = new Set(banners?.map((b) => b.id) || []);
+
+  const handleToggle = (item: Content) => {
+    const isCurrentlyBanner = bannerIds.has(item.id);
+    if (isCurrentlyBanner) {
+      toggleMutation.mutate({ id: item.id, isBanner: false, bannerOrder: 0 });
+    } else {
+      const maxOrder = banners?.reduce((max, b) => Math.max(max, b.bannerOrder), 0) || 0;
+      toggleMutation.mutate({ id: item.id, isBanner: true, bannerOrder: maxOrder + 1 });
+    }
+  };
+
+  const moveUp = (item: Content) => {
+    if (!banners) return;
+    const idx = banners.findIndex((b) => b.id === item.id);
+    if (idx <= 0) return;
+    const newOrder = [...banners.map((b) => b.id)];
+    [newOrder[idx - 1], newOrder[idx]] = [newOrder[idx], newOrder[idx - 1]];
+    reorderMutation.mutate(newOrder);
+  };
+
+  const moveDown = (item: Content) => {
+    if (!banners) return;
+    const idx = banners.findIndex((b) => b.id === item.id);
+    if (idx < 0 || idx >= banners.length - 1) return;
+    const newOrder = [...banners.map((b) => b.id)];
+    [newOrder[idx], newOrder[idx + 1]] = [newOrder[idx + 1], newOrder[idx]];
+    reorderMutation.mutate(newOrder);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Image className="w-5 h-5 text-primary" />
+        <h2 className="text-lg font-semibold">Banner Carousel</h2>
+      </div>
+
+      {banners && banners.length > 0 && (
+        <div className="space-y-2 mb-4">
+          <p className="text-xs text-muted-foreground">Current banners (drag to reorder):</p>
+          {banners.map((b, idx) => (
+            <Card key={b.id} className="p-3 flex items-center gap-3" data-testid={`banner-item-${b.id}`}>
+              <img src={b.poster} alt={b.title} className="w-10 h-14 object-cover rounded-md shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{b.title}</p>
+                <p className="text-xs text-muted-foreground">Order: {idx + 1}</p>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  disabled={idx === 0}
+                  onClick={() => moveUp(b)}
+                  data-testid={`button-banner-up-${b.id}`}
+                >
+                  <ChevronUp className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  disabled={idx === banners.length - 1}
+                  onClick={() => moveDown(b)}
+                  data-testid={`button-banner-down-${b.id}`}
+                >
+                  <ChevronDown className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="text-destructive"
+                  onClick={() => toggleMutation.mutate({ id: b.id, isBanner: false, bannerOrder: 0 })}
+                  data-testid={`button-banner-remove-${b.id}`}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <p className="text-xs text-muted-foreground">Select content to show in banner:</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+          {allContent.map((item) => {
+            const isInBanner = bannerIds.has(item.id);
+            return (
+              <Card
+                key={item.id}
+                className={`p-2 cursor-pointer hover-elevate ${isInBanner ? "border-primary bg-primary/5" : ""}`}
+                onClick={() => handleToggle(item)}
+                data-testid={`banner-toggle-${item.id}`}
+              >
+                <div className="relative">
+                  <img
+                    src={item.poster}
+                    alt={item.title}
+                    className="w-full aspect-[3/4] object-cover rounded-md"
+                  />
+                  {isInBanner && (
+                    <div className="absolute top-1 right-1 w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                      <Star className="w-3.5 h-3.5 text-primary-foreground fill-primary-foreground" />
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs font-medium mt-1 truncate">{item.title}</p>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Admin() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -733,26 +883,37 @@ export default function Admin() {
         </div>
       </div>
 
-      <div className="px-4 md:px-8 lg:px-12 py-6 max-w-4xl mx-auto">
-        {isLoading ? (
-          <div className="space-y-4">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-24 rounded-md" />
-            ))}
-          </div>
-        ) : !allContent || allContent.length === 0 ? (
-          <div className="text-center py-16">
-            <Film className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-muted-foreground">No content yet</h3>
-            <p className="text-sm text-muted-foreground/70 mt-1">Click "Add Content" to get started</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {allContent.map((item) => (
-              <ContentAdminCard key={item.id} item={item} />
-            ))}
-          </div>
+      <div className="px-4 md:px-8 lg:px-12 py-6 max-w-4xl mx-auto space-y-8">
+        {allContent && allContent.length > 0 && (
+          <BannerManagement allContent={allContent} />
         )}
+
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <Film className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-semibold">Content Management</h2>
+          </div>
+
+          {isLoading ? (
+            <div className="space-y-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-24 rounded-md" />
+              ))}
+            </div>
+          ) : !allContent || allContent.length === 0 ? (
+            <div className="text-center py-16">
+              <Film className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-muted-foreground">No content yet</h3>
+              <p className="text-sm text-muted-foreground/70 mt-1">Click "Add Content" to get started</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {allContent.map((item) => (
+                <ContentAdminCard key={item.id} item={item} />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

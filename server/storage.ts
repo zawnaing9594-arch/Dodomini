@@ -7,7 +7,7 @@ import {
   episodes,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, asc, desc } from "drizzle-orm";
 
 export interface IStorage {
   getAllContent(): Promise<Content[]>;
@@ -21,6 +21,8 @@ export interface IStorage {
   createEpisodesBulk(data: InsertEpisode[]): Promise<Episode[]>;
   deleteEpisode(epId: number): Promise<void>;
   findEpisodeBySlug(seriesSlug: string, epSlug: string): Promise<{ episode: Episode; parent: Content } | null>;
+  getBannerContent(): Promise<Content[]>;
+  toggleBanner(id: number, isBanner: boolean, bannerOrder?: number): Promise<Content>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -82,6 +84,18 @@ export class DatabaseStorage implements IStorage {
     if (!matchedEp) return null;
 
     return { episode: matchedEp, parent: matchedContent };
+  }
+
+  async getBannerContent(): Promise<Content[]> {
+    return db.select().from(content).where(eq(content.isBanner, true)).orderBy(asc(content.bannerOrder));
+  }
+
+  async toggleBanner(id: number, isBanner: boolean, bannerOrder?: number): Promise<Content> {
+    const [item] = await db.update(content)
+      .set({ isBanner, bannerOrder: bannerOrder ?? 0 })
+      .where(eq(content.id, id))
+      .returning();
+    return item;
   }
 }
 

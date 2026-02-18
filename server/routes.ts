@@ -157,6 +157,30 @@ export async function registerRoutes(
     });
   });
 
+  app.get("/api/banners", async (_req, res) => {
+    const banners = await storage.getBannerContent();
+    res.json(banners);
+  });
+
+  app.post("/api/banners/toggle", async (req, res) => {
+    if (!(req.session as any)?.isAdmin) return res.status(401).json({ error: "Not authenticated" });
+    const { id, isBanner, bannerOrder } = req.body;
+    if (!id) return res.status(400).json({ error: "Missing ID" });
+    const item = await storage.toggleBanner(id, isBanner, bannerOrder);
+    res.json(item);
+  });
+
+  app.post("/api/banners/reorder", async (req, res) => {
+    if (!(req.session as any)?.isAdmin) return res.status(401).json({ error: "Not authenticated" });
+    const { orderedIds } = req.body;
+    if (!Array.isArray(orderedIds)) return res.status(400).json({ error: "Missing orderedIds" });
+    for (let i = 0; i < orderedIds.length; i++) {
+      await storage.toggleBanner(orderedIds[i], true, i + 1);
+    }
+    const banners = await storage.getBannerContent();
+    res.json(banners);
+  });
+
   app.post("/api/watch/:epId/unlock", async (req, res) => {
     const epId = parseInt(req.params.epId);
     if (isNaN(epId)) return res.status(400).json({ error: "Invalid ID" });

@@ -156,7 +156,11 @@ export default function Home() {
     queryKey: ["/api/content"],
   });
 
-  const banners = allContent?.slice(0, 5) || [];
+  const { data: bannerContent } = useQuery<Content[]>({
+    queryKey: ["/api/banners"],
+  });
+
+  const banners = bannerContent && bannerContent.length > 0 ? bannerContent : (allContent?.slice(0, 5) || []);
   const series = allContent?.filter((c) => c.type === "series") || [];
   const movies = allContent?.filter((c) => c.type === "movie") || [];
 

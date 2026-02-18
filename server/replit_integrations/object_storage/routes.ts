@@ -36,6 +36,9 @@ export function registerObjectStorageRoutes(app: Express): void {
    * Send JSON metadata only, then upload the file directly to uploadURL.
    */
   app.post("/api/uploads/request-url", async (req, res) => {
+    if (!(req.session as any)?.isAdmin) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
     try {
       const { name, size, contentType } = req.body;
 
