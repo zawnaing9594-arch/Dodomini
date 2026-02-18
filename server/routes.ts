@@ -142,6 +142,29 @@ export async function registerRoutes(
     });
   });
 
+  app.get("/api/resolve/:seriesSlug/:epSlug", async (req, res) => {
+    const { seriesSlug, epSlug } = req.params;
+    const result = await storage.findEpisodeBySlug(seriesSlug, epSlug);
+    if (!result) return res.status(404).json({ error: "Not found" });
+
+    const allEpisodes = await storage.getEpisodesByContentId(result.parent.id);
+
+    const isLocked = result.episode.isLocked;
+    const unlockKey = `unlocked_ep_${result.episode.epId}`;
+    const sessionUnlocked = (req.session as any)?.[unlockKey];
+
+    res.json({
+      episode: isLocked && !sessionUnlocked
+        ? { ...result.episode, isLocked: true, password: undefined }
+        : { ...result.episode, isLocked: false, password: undefined },
+      parent: result.parent,
+      allEpisodes: allEpisodes.map((ep) => ({
+        ...ep,
+        password: undefined,
+      })),
+    });
+  });
+
   app.post("/api/upload", upload.single("image"), (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });

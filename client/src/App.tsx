@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import SeriesDetail from "@/pages/series-detail";
 import Watch from "@/pages/watch";
+import WatchSlug from "@/pages/watch-slug";
 import Admin from "@/pages/admin";
 
 function Router() {
@@ -16,6 +17,7 @@ function Router() {
       <Route path="/series/:id" component={SeriesDetail} />
       <Route path="/watch/:epId" component={Watch} />
       <Route path="/admin" component={Admin} />
+      <Route path="/:seriesSlug/:epSlug" component={WatchSlug} />
       <Route component={NotFound} />
     </Switch>
   );

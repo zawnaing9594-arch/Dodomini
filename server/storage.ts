@@ -20,6 +20,7 @@ export interface IStorage {
   createEpisode(data: InsertEpisode): Promise<Episode>;
   createEpisodesBulk(data: InsertEpisode[]): Promise<Episode[]>;
   deleteEpisode(epId: number): Promise<void>;
+  findEpisodeBySlug(seriesSlug: string, epSlug: string): Promise<{ episode: Episode; parent: Content } | null>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -68,6 +69,19 @@ export class DatabaseStorage implements IStorage {
 
   async deleteEpisode(epId: number): Promise<void> {
     await db.delete(episodes).where(eq(episodes.epId, epId));
+  }
+
+  async findEpisodeBySlug(seriesSlug: string, epSlug: string): Promise<{ episode: Episode; parent: Content } | null> {
+    const allContent = await db.select().from(content);
+    const toSlug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const matchedContent = allContent.find((c) => toSlug(c.title) === seriesSlug);
+    if (!matchedContent) return null;
+
+    const allEps = await db.select().from(episodes).where(eq(episodes.contentId, matchedContent.id));
+    const matchedEp = allEps.find((ep) => toSlug(ep.epTitle) === epSlug);
+    if (!matchedEp) return null;
+
+    return { episode: matchedEp, parent: matchedContent };
   }
 }
 

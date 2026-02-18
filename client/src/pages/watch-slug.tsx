@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
 import { type Content, type Episode } from "@shared/schema";
 import { ArrowLeft, Lock, Play, ChevronLeft, ChevronRight, Share2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useMemo, useCallback } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { getShareUrl } from "@/lib/slugs";
+import { toSlug, getShareUrl } from "@/lib/slugs";
 
 function ShareButton({ seriesTitle, epTitle }: { seriesTitle: string; epTitle: string }) {
   const { toast } = useToast();
@@ -105,8 +105,9 @@ function getEmbedUrl(rawLink: string): string {
   return rawLink;
 }
 
-export default function Watch() {
-  const { epId } = useParams<{ epId: string }>();
+export default function WatchSlug() {
+  const { seriesSlug, epSlug } = useParams<{ seriesSlug: string; epSlug: string }>();
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [password, setPassword] = useState("");
 
@@ -115,8 +116,10 @@ export default function Watch() {
     parent: Content;
     allEpisodes: Episode[];
   }>({
-    queryKey: ["/api/watch", epId],
+    queryKey: ["/api/resolve", seriesSlug, epSlug],
   });
+
+  const epId = episodeData?.episode?.epId;
 
   const unlockMutation = useMutation({
     mutationFn: async (pwd: string) => {
@@ -124,7 +127,7 @@ export default function Watch() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/watch", epId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/resolve", seriesSlug, epSlug] });
     },
     onError: (err: Error) => {
       toast({ title: "Wrong password", description: err.message, variant: "destructive" });
@@ -132,8 +135,8 @@ export default function Watch() {
   });
 
   const currentEpIndex = useMemo(() => {
-    if (!episodeData?.allEpisodes) return -1;
-    return episodeData.allEpisodes.findIndex((e) => e.epId === Number(epId));
+    if (!episodeData?.allEpisodes || !epId) return -1;
+    return episodeData.allEpisodes.findIndex((e) => e.epId === epId);
   }, [episodeData, epId]);
 
   const prevEp = episodeData?.allEpisodes?.[currentEpIndex - 1];
@@ -172,6 +175,10 @@ export default function Watch() {
   const isLocked = episode.isLocked;
   const embedUrl = getEmbedUrl(episode.videoLink);
 
+  const navigateToEp = (ep: Episode) => {
+    setLocation(getShareUrl(parent.title, ep.epTitle));
+  };
+
   return (
     <div className="min-h-screen bg-background" data-testid="page-watch">
       <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-md border-b border-border">
@@ -190,18 +197,14 @@ export default function Watch() {
           <div className="flex items-center gap-1">
             <ShareButton seriesTitle={parent.title} epTitle={episode.epTitle} />
             {prevEp && (
-              <Link href={getShareUrl(parent.title, prevEp.epTitle)}>
-                <Button size="icon" variant="ghost" data-testid="button-prev-ep">
-                  <ChevronLeft className="w-5 h-5" />
-                </Button>
-              </Link>
+              <Button size="icon" variant="ghost" onClick={() => navigateToEp(prevEp)} data-testid="button-prev-ep">
+                <ChevronLeft className="w-5 h-5" />
+              </Button>
             )}
             {nextEp && (
-              <Link href={getShareUrl(parent.title, nextEp.epTitle)}>
-                <Button size="icon" variant="ghost" data-testid="button-next-ep">
-                  <ChevronRight className="w-5 h-5" />
-                </Button>
-              </Link>
+              <Button size="icon" variant="ghost" onClick={() => navigateToEp(nextEp)} data-testid="button-next-ep">
+                <ChevronRight className="w-5 h-5" />
+              </Button>
             )}
           </div>
         </div>
@@ -262,27 +265,27 @@ export default function Watch() {
               <h3 className="text-sm font-medium text-muted-foreground mb-3">All Episodes</h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
                 {allEpisodes.map((ep) => (
-                  <Link key={ep.epId} href={getShareUrl(parent.title, ep.epTitle)}>
-                    <Card
-                      className={`p-3 hover-elevate cursor-pointer flex items-center gap-2 ${
-                        ep.epId === Number(epId) ? "border-primary bg-primary/5" : ""
-                      }`}
-                      data-testid={`card-ep-${ep.epId}`}
-                    >
-                      {ep.isLocked ? (
-                        <Lock className="w-3.5 h-3.5 shrink-0 text-yellow-400" />
-                      ) : (
-                        <Play
-                          className={`w-3.5 h-3.5 shrink-0 ${
-                            ep.epId === Number(epId)
-                              ? "text-primary fill-primary"
-                              : "text-muted-foreground"
-                          }`}
-                        />
-                      )}
-                      <span className="text-sm truncate">{ep.epTitle}</span>
-                    </Card>
-                  </Link>
+                  <Card
+                    key={ep.epId}
+                    onClick={() => navigateToEp(ep)}
+                    className={`p-3 hover-elevate cursor-pointer flex items-center gap-2 ${
+                      ep.epId === episode.epId ? "border-primary bg-primary/5" : ""
+                    }`}
+                    data-testid={`card-ep-${ep.epId}`}
+                  >
+                    {ep.isLocked ? (
+                      <Lock className="w-3.5 h-3.5 shrink-0 text-yellow-400" />
+                    ) : (
+                      <Play
+                        className={`w-3.5 h-3.5 shrink-0 ${
+                          ep.epId === episode.epId
+                            ? "text-primary fill-primary"
+                            : "text-muted-foreground"
+                        }`}
+                      />
+                    )}
+                    <span className="text-sm truncate">{ep.epTitle}</span>
+                  </Card>
                 ))}
               </div>
             </div>
