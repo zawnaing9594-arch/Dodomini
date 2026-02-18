@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { type Content, type Episode } from "@shared/schema";
-import { ChevronLeft, ChevronRight, Play, Film, Bell, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Play, Film, Bell, X, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 
 function BannerCarousel({ banners }: { banners: Content[] }) {
   const [current, setCurrent] = useState(0);
@@ -279,9 +280,29 @@ export default function Home() {
     queryKey: ["/api/banners"],
   });
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (searchOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [searchOpen]);
+
   const banners = bannerContent && bannerContent.length > 0 ? bannerContent : (allContent?.slice(0, 5) || []);
-  const series = allContent?.filter((c) => c.type === "series") || [];
-  const movies = allContent?.filter((c) => c.type === "movie") || [];
+
+  const filteredContent = useMemo(() => {
+    if (!allContent) return { series: [], movies: [] };
+    const q = searchQuery.toLowerCase().trim();
+    const filtered = q ? allContent.filter((c) => c.title.toLowerCase().includes(q)) : allContent;
+    return {
+      series: filtered.filter((c) => c.type === "series"),
+      movies: filtered.filter((c) => c.type === "movie"),
+    };
+  }, [allContent, searchQuery]);
+
+  const isSearching = searchQuery.trim().length > 0;
 
   return (
     <div className="min-h-screen bg-background" data-testid="page-home">
@@ -292,46 +313,94 @@ export default function Home() {
               Series<span className="text-primary">Plus</span>
             </h1>
           </Link>
-          <NotificationBell />
+          <div className="flex items-center gap-1">
+            {searchOpen ? (
+              <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm rounded-md border border-white/10 px-2">
+                <Search className="w-4 h-4 text-white/60 shrink-0" />
+                <Input
+                  ref={searchInputRef}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search..."
+                  className="border-0 bg-transparent text-white placeholder:text-white/40 focus-visible:ring-0 h-9 w-36 sm:w-48"
+                  data-testid="input-search"
+                />
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="text-white/60 h-7 w-7"
+                  onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
+                  data-testid="button-search-close"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            ) : (
+              <Button
+                size="icon"
+                variant="ghost"
+                className="text-white/80"
+                onClick={() => setSearchOpen(true)}
+                data-testid="button-search-open"
+              >
+                <Search className="w-5 h-5" />
+              </Button>
+            )}
+            <NotificationBell />
+          </div>
         </div>
       </header>
 
-      {isLoading ? (
-        <Skeleton className="w-full h-[420px] md:h-[520px]" />
-      ) : (
-        <BannerCarousel banners={banners} />
+      {!isSearching && (
+        <>
+          {isLoading ? (
+            <Skeleton className="w-full h-[420px] md:h-[520px]" />
+          ) : (
+            <BannerCarousel banners={banners} />
+          )}
+        </>
       )}
 
+      {isSearching && <div className="h-20" />}
+
       <div className="px-4 md:px-8 lg:px-12 py-8 space-y-10">
-        {series.length > 0 && (
+        {isSearching && filteredContent.series.length === 0 && filteredContent.movies.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <Search className="w-16 h-16 text-muted-foreground/30 mb-4" />
+            <h3 className="text-lg font-medium text-muted-foreground">No results for "{searchQuery}"</h3>
+            <p className="text-sm text-muted-foreground/70 mt-1">Try a different search term</p>
+          </div>
+        )}
+
+        {filteredContent.series.length > 0 && (
           <section>
             <div className="flex items-center gap-2 mb-5">
               <Film className="w-5 h-5 text-primary" />
               <h2 className="text-xl font-semibold" data-testid="text-section-series">Series</h2>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
-              {series.map((item) => (
+              {filteredContent.series.map((item) => (
                 <ContentCard key={item.id} item={item} />
               ))}
             </div>
           </section>
         )}
 
-        {movies.length > 0 && (
+        {filteredContent.movies.length > 0 && (
           <section>
             <div className="flex items-center gap-2 mb-5">
               <Film className="w-5 h-5 text-primary" />
               <h2 className="text-xl font-semibold" data-testid="text-section-movies">Movies</h2>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
-              {movies.map((item) => (
+              {filteredContent.movies.map((item) => (
                 <ContentCard key={item.id} item={item} />
               ))}
             </div>
           </section>
         )}
 
-        {!isLoading && (!allContent || allContent.length === 0) && (
+        {!isSearching && !isLoading && (!allContent || allContent.length === 0) && (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <Film className="w-16 h-16 text-muted-foreground/30 mb-4" />
             <h3 className="text-lg font-medium text-muted-foreground">No content yet</h3>
