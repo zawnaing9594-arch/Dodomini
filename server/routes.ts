@@ -14,7 +14,7 @@ export async function registerRoutes(
 
   const vapidPublicKey = process.env.VAPID_PUBLIC_KEY || "";
   const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY || "";
-  const vapidSubject = process.env.VAPID_SUBJECT || "mailto:admin@seriesplus.app";
+  const vapidSubject = process.env.VAPID_SUBJECT || "mailto:admin@seriesplus.net";
 
   if (vapidPublicKey && vapidPrivateKey) {
     webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
