@@ -105,12 +105,13 @@ export async function registerRoutes(
     if (isNaN(epId)) return res.status(400).json({ error: "Invalid ID" });
     const existing = await storage.getEpisodeById(epId);
     if (!existing) return res.status(404).json({ error: "Episode not found" });
-    const { isLocked, password, epTitle, videoLink } = req.body;
+    const { isLocked, password, epTitle, videoLink, contentId } = req.body;
     const updateData: any = {};
     if (typeof isLocked === "boolean") updateData.isLocked = isLocked;
     if (typeof password === "string") updateData.password = password || null;
     if (typeof epTitle === "string" && epTitle.trim()) updateData.epTitle = epTitle.trim();
     if (typeof videoLink === "string" && videoLink.trim()) updateData.videoLink = videoLink.trim();
+    if (typeof contentId === "number") updateData.contentId = contentId;
     const ep = await storage.updateEpisode(epId, updateData);
     res.json({ ...ep, password: undefined });
   });

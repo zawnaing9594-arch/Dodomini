@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import { type Content, type Episode } from "@shared/schema";
-import { ArrowLeft, Lock, Play, ChevronLeft, ChevronRight, Share2, Check, Maximize, Minimize } from "lucide-react";
+import { ArrowLeft, Lock, Play, ChevronLeft, ChevronRight, Share2, Check, Maximize, Minimize, Download, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { getShareUrl } from "@/lib/slugs";
 
 function ShareButton({ epId, title }: { epId: number; title: string }) {
@@ -56,13 +57,29 @@ function VideoPlayer({ embedUrl, videoLink }: { embedUrl: string; videoLink: str
       <video
         src={videoLink}
         controls
+        crossOrigin="anonymous"
         className="w-full h-full bg-black"
         data-testid="video-player"
       />
     );
   }
 
+  const isFacebook = videoLink.includes("facebook.com") || videoLink.includes("fb.watch") || videoLink.includes("fb.com");
   const isGoogleDrive = embedUrl.includes("drive.google.com");
+
+  if (isFacebook) {
+    return (
+      <div className="relative w-full h-full">
+        <iframe
+          src={embedUrl}
+          className="w-full h-full"
+          allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+          allowFullScreen
+          data-testid="video-iframe"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-full h-full">
@@ -87,6 +104,33 @@ function VideoPlayer({ embedUrl, videoLink }: { embedUrl: string; videoLink: str
         </div>
       )}
     </div>
+  );
+}
+
+function DownloadButton({ videoLink }: { videoLink: string }) {
+  const { isAuthenticated, isLoading } = useAuth();
+  const isDirectVideo = /\.(mp4|webm|m3u8|mov|avi|mkv)(\?.*)?$/i.test(videoLink);
+
+  if (!isDirectVideo) return null;
+
+  if (isLoading) return null;
+
+  if (!isAuthenticated) {
+    return (
+      <a href="/api/login">
+        <Button size="icon" variant="ghost" data-testid="button-login-download">
+          <LogIn className="w-4 h-4" />
+        </Button>
+      </a>
+    );
+  }
+
+  return (
+    <a href={videoLink} download target="_blank" rel="noopener noreferrer">
+      <Button size="icon" variant="ghost" data-testid="button-download">
+        <Download className="w-4 h-4" />
+      </Button>
+    </a>
   );
 }
 
@@ -307,6 +351,7 @@ export default function Watch() {
             <p className="text-xs text-muted-foreground truncate">{parent.title}</p>
           </div>
           <div className="flex items-center gap-1">
+            <DownloadButton videoLink={episode.videoLink} />
             <ShareButton epId={episode.epId} title={`${parent.title} - ${episode.epTitle}`} />
             {prevEp && (
               <Link href={getShareUrl(prevEp.epId)}>

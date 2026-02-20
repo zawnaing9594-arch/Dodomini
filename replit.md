@@ -16,8 +16,11 @@ A movie/series streaming platform built with React (frontend) + Express (backend
 - Home page with banner carousel (admin-configurable) and content grid
 - Series detail page with episode listing
 - Video player supporting Vimeo, Google Drive, YouTube, Telegram, Facebook, Dailymotion, and direct links
+- SRT subtitle support for direct video links
+- Download button for direct video links (requires login via Replit Auth)
 - Admin panel for content and episode management (bulk upload), password-protected
 - Episode editing: lock/unlock toggle, password management, title/link editing
+- Episode move: move episodes between series via admin edit dialog
 - Banner carousel management (select content, reorder) in admin panel
 - Password-protected premium episodes with session-based unlock (per-episode locking)
 - Poster upload via Replit Object Storage (persistent across redeployments)
@@ -25,6 +28,9 @@ A movie/series streaming platform built with React (frontend) + Express (backend
 - New episode notifications (bell icon on home page, browser notifications)
 - PWA support (installable as mobile app)
 - Google Analytics integration (via GA_MEASUREMENT_ID env var)
+- Google AdSense + HilltopAds monetization
+- SEO: sitemap.xml, robots.txt, Open Graph, Twitter cards, Myanmar keywords
+- User authentication via Replit Auth (Google, GitHub, etc.) for download access
 
 ## Data Models
 - `content`: id, title, type (series/movie), poster, description, isBanner, bannerOrder
@@ -39,7 +45,7 @@ A movie/series streaming platform built with React (frontend) + Express (backend
 - GET /api/content/:id/episodes - Get episodes for content
 - POST /api/episodes - Create single episode
 - POST /api/episodes/bulk - Bulk create episodes (text format: Title, Link per line)
-- PATCH /api/episodes/:epId - Update episode (lock/unlock, password, title, link) (admin-only)
+- PATCH /api/episodes/:epId - Update episode (lock/unlock, password, title, link, move to series) (admin-only)
 - DELETE /api/episodes/:epId - Delete episode
 - GET /api/watch/:epId - Get episode watch data (episode + parent + allEpisodes)
 - POST /api/watch/:epId/unlock - Unlock premium content with password

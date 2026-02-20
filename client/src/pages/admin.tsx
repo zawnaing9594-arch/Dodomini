@@ -5,7 +5,7 @@ import { type Content, type Episode, insertContentSchema } from "@shared/schema"
 import { z } from "zod";
 import { Link, useLocation } from "wouter";
 import {
-  Plus, Trash2, Upload, Film, ArrowLeft, ChevronDown, ChevronUp, Tv, Play, ImagePlus, X, Loader2, Lock, Pencil, KeyRound, Star, GripVertical, Image, Minus, Settings,
+  Plus, Trash2, Upload, Film, ArrowLeft, ChevronDown, ChevronUp, Tv, Play, ImagePlus, X, Loader2, Lock, Pencil, KeyRound, Star, GripVertical, Image, Minus, Settings, ArrowRightLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -541,6 +541,12 @@ function EditEpisodeDialog({ ep, contentId }: { ep: Episode; contentId: number }
   const [videoLink, setVideoLink] = useState(ep.videoLink);
   const [isLocked, setIsLocked] = useState(ep.isLocked);
   const [password, setPassword] = useState("");
+  const [moveToContentId, setMoveToContentId] = useState<string>("");
+
+  const { data: allContent } = useQuery<Content[]>({
+    queryKey: ["/api/content"],
+    enabled: open,
+  });
 
   useEffect(() => {
     if (open) {
@@ -548,6 +554,7 @@ function EditEpisodeDialog({ ep, contentId }: { ep: Episode; contentId: number }
       setVideoLink(ep.videoLink);
       setIsLocked(ep.isLocked);
       setPassword("");
+      setMoveToContentId("");
     }
   }, [open, ep]);
 
@@ -556,18 +563,24 @@ function EditEpisodeDialog({ ep, contentId }: { ep: Episode; contentId: number }
       const body: any = { epTitle, videoLink, isLocked };
       if (isLocked && password) body.password = password;
       if (!isLocked) body.password = "";
+      if (moveToContentId) body.contentId = Number(moveToContentId);
       const res = await apiRequest("PATCH", `/api/episodes/${ep.epId}`, body);
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/content", String(contentId), "episodes"] });
-      toast({ title: "Episode updated" });
+      if (moveToContentId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/content", moveToContentId, "episodes"] });
+      }
+      toast({ title: moveToContentId ? "Episode moved & updated" : "Episode updated" });
       setOpen(false);
     },
     onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     },
   });
+
+  const otherContent = allContent?.filter((c) => c.id !== contentId) || [];
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -623,6 +636,26 @@ function EditEpisodeDialog({ ep, contentId }: { ep: Episode; contentId: number }
               />
             )}
           </div>
+          {otherContent.length > 0 && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium flex items-center gap-1.5">
+                <ArrowRightLeft className="w-3.5 h-3.5" />
+                Move to another series
+              </label>
+              <Select value={moveToContentId} onValueChange={setMoveToContentId}>
+                <SelectTrigger data-testid={`select-move-ep-${ep.epId}`}>
+                  <SelectValue placeholder="Keep in current series" />
+                </SelectTrigger>
+                <SelectContent>
+                  {otherContent.map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <Button
             className="w-full"
             disabled={updateMutation.isPending || !epTitle || !videoLink}

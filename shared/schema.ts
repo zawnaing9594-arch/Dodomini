@@ -3,6 +3,8 @@ import { pgTable, text, varchar, integer, serial, boolean } from "drizzle-orm/pg
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export * from "./models/auth";
+
 export const content = pgTable("content", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
