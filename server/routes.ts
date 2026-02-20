@@ -219,6 +219,20 @@ export async function registerRoutes(
     res.json({ id });
   });
 
+  app.get("/sitemap.xml", async (_req, res) => {
+    const allContent = await storage.getAllContent();
+    const baseUrl = "https://series-plus-myanmar.replit.app";
+    let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>${baseUrl}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`;
+    for (const c of allContent) {
+      xml += `\n  <url><loc>${baseUrl}/series/${c.id}</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>`;
+    }
+    xml += `\n</urlset>`;
+    res.header("Content-Type", "application/xml");
+    res.send(xml);
+  });
+
   app.get("/api/latest-episodes", async (_req, res) => {
     const allContent = await storage.getAllContent();
     const latestEps: Array<{ episode: any; contentTitle: string }> = [];
