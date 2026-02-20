@@ -48,8 +48,15 @@ function ShareButton({ epId, title, seriesTitle, epTitle }: { epId: number; titl
   );
 }
 
+function getDropboxRawUrl(url: string): string | null {
+  if (!url.includes("dropbox.com")) return null;
+  return url.replace(/[?&]dl=[01]/, "").replace(/\?$/, "") + (url.includes("?") ? "&raw=1" : "?raw=1");
+}
+
 function VideoPlayer({ embedUrl, videoLink, srtLink }: { embedUrl: string; videoLink: string; srtLink?: string | null }) {
-  const isDirectVideo = /\.(mp4|webm|m3u8|mov|avi|mkv)(\?.*)?$/i.test(videoLink);
+  const dropboxUrl = getDropboxRawUrl(videoLink);
+  const isDirectVideo = dropboxUrl ? true : /\.(mp4|webm|m3u8|mov|avi|mkv)(\?.*)?$/i.test(videoLink);
+  const directSrc = dropboxUrl || videoLink;
   const [iframeError, setIframeError] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [srtCues, setSrtCues] = useState<import("@/lib/srtParser").SrtCue[]>([]);
@@ -84,7 +91,7 @@ function VideoPlayer({ embedUrl, videoLink, srtLink }: { embedUrl: string; video
       <div className="relative w-full h-full">
         <video
           ref={videoRef}
-          src={videoLink}
+          src={directSrc}
           controls
           crossOrigin="anonymous"
           className="w-full h-full bg-black"
@@ -163,6 +170,7 @@ function DownloadButton({ videoLink, epId, epTitle }: { videoLink: string; epId:
   const { toast } = useToast();
   const isDirectVideo = /\.(mp4|webm|m3u8|mov|avi|mkv)(\?.*)?$/i.test(videoLink);
   const isGoogleDrive = videoLink.includes("drive.google.com");
+  const isDropbox = videoLink.includes("dropbox.com");
 
   const getDriveFileId = (url: string): string | null => {
     if (url.includes("/file/d/")) return url.split("/file/d/")[1].split("/")[0];
@@ -170,7 +178,7 @@ function DownloadButton({ videoLink, epId, epTitle }: { videoLink: string; epId:
     return null;
   };
 
-  const canDownload = isDirectVideo || isGoogleDrive;
+  const canDownload = isDirectVideo || isGoogleDrive || isDropbox;
 
   if (isLoading) return null;
 
@@ -200,6 +208,9 @@ function DownloadButton({ videoLink, epId, epTitle }: { videoLink: string; epId:
       } else {
         downloadUrl = `/api/video-proxy?url=${encodeURIComponent(videoLink)}&filename=${encodeURIComponent(filename)}`;
       }
+    } else if (isDropbox) {
+      const rawUrl = getDropboxRawUrl(videoLink) || videoLink;
+      downloadUrl = `/api/video-proxy?url=${encodeURIComponent(rawUrl)}&filename=${encodeURIComponent(filename)}`;
     } else {
       downloadUrl = `/api/video-proxy?url=${encodeURIComponent(videoLink)}&filename=${encodeURIComponent(filename)}`;
     }
