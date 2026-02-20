@@ -36,6 +36,7 @@ export const episodes = pgTable("episodes", {
   srtLink: text("srt_link"),
   isLocked: boolean("is_locked").notNull().default(false),
   password: text("password"),
+  epOrder: integer("ep_order").notNull().default(0),
 });
 
 export const insertContentSchema = createInsertSchema(content).omit({ id: true });

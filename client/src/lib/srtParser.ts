@@ -52,8 +52,10 @@ export function parseSrt(text: string): SrtCue[] {
 }
 
 export async function fetchSrt(url: string): Promise<SrtCue[]> {
-  const proxyUrl = `/api/srt-proxy?url=${encodeURIComponent(url)}`;
-  const res = await fetch(proxyUrl);
+  const fetchUrl = url.startsWith("/objects/") || url.startsWith("/uploads/")
+    ? url
+    : `/api/srt-proxy?url=${encodeURIComponent(url)}`;
+  const res = await fetch(fetchUrl);
   if (!res.ok) throw new Error("Failed to fetch SRT");
   const text = await res.text();
   return parseSrt(text);

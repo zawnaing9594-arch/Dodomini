@@ -127,7 +127,9 @@ export async function registerRoutes(
   app.post("/api/episodes", async (req, res) => {
     const parsed = insertEpisodeSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
-    const ep = await storage.createEpisode(parsed.data);
+    const existing = await storage.getEpisodesByContentId(parsed.data.contentId);
+    const maxOrder = existing.length > 0 ? Math.max(...existing.map((e) => e.epOrder)) : -1;
+    const ep = await storage.createEpisode({ ...parsed.data, epOrder: maxOrder + 1 });
     const parent = await storage.getContentById(ep.contentId);
     if (parent) {
       sendPushToAll(
@@ -183,6 +185,20 @@ export async function registerRoutes(
     if (typeof contentId === "number") updateData.contentId = contentId;
     const ep = await storage.updateEpisode(epId, updateData);
     res.json({ ...ep, password: undefined });
+  });
+
+  app.post("/api/episodes/reorder", async (req, res) => {
+    if (!(req.session as any)?.isAdmin) return res.status(401).json({ error: "Not authenticated" });
+    const { orderedIds, contentId } = req.body;
+    if (!Array.isArray(orderedIds) || !contentId) return res.status(400).json({ error: "orderedIds and contentId required" });
+    const eps = await storage.getEpisodesByContentId(Number(contentId));
+    const validIds = new Set(eps.map((e) => e.epId));
+    const allValid = orderedIds.every((id: number) => validIds.has(id));
+    if (!allValid) return res.status(400).json({ error: "Invalid episode IDs" });
+    for (let i = 0; i < orderedIds.length; i++) {
+      await storage.updateEpisode(orderedIds[i], { epOrder: i });
+    }
+    res.json({ ok: true });
   });
 
   app.delete("/api/episodes/:epId", async (req, res) => {

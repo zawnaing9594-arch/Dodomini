@@ -58,7 +58,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getEpisodesByContentId(contentId: number): Promise<Episode[]> {
-    return db.select().from(episodes).where(eq(episodes.contentId, contentId));
+    return db.select().from(episodes).where(eq(episodes.contentId, contentId)).orderBy(asc(episodes.epOrder), asc(episodes.epId));
   }
 
   async getEpisodeById(epId: number): Promise<Episode | undefined> {

@@ -5,7 +5,7 @@ import { type Content, type Episode, insertContentSchema } from "@shared/schema"
 import { z } from "zod";
 import { Link, useLocation } from "wouter";
 import {
-  Plus, Trash2, Upload, Film, ArrowLeft, ChevronDown, ChevronUp, Tv, Play, ImagePlus, X, Loader2, Lock, Pencil, KeyRound, Star, GripVertical, Image, Minus, Settings, ArrowRightLeft,
+  Plus, Trash2, Upload, Film, ArrowLeft, ChevronDown, ChevronUp, Tv, Play, ImagePlus, X, Loader2, Lock, Pencil, KeyRound, Star, GripVertical, Image, Minus, Settings, ArrowRightLeft, ArrowUp, ArrowDown, FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -620,13 +620,51 @@ function EditEpisodeDialog({ ep, contentId }: { ep: Episode; contentId: number }
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">SRT Subtitle Link (optional)</label>
-            <Input
-              value={srtLink}
-              onChange={(e) => setSrtLink(e.target.value)}
-              placeholder="https://example.com/subtitle.srt"
-              data-testid={`input-edit-ep-srt-${ep.epId}`}
-            />
+            <label className="text-sm font-medium">SRT Subtitle File (optional)</label>
+            <div className="flex items-center gap-2">
+              {srtLink ? (
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <FileText className="w-4 h-4 text-green-400 shrink-0" />
+                  <span className="text-xs text-muted-foreground truncate">{srtLink.split("/").pop()}</span>
+                  <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" onClick={() => setSrtLink("")}>
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              ) : (
+                <span className="text-xs text-muted-foreground">No subtitle</span>
+              )}
+              <label className="cursor-pointer">
+                <input
+                  type="file"
+                  accept=".srt"
+                  className="hidden"
+                  data-testid={`input-edit-ep-srt-${ep.epId}`}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      const metaRes = await fetch("/api/uploads/request-url", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ name: file.name, size: file.size, contentType: "text/plain" }),
+                      });
+                      if (!metaRes.ok) throw new Error("Failed to get upload URL");
+                      const { uploadURL, objectPath } = await metaRes.json();
+                      const uploadRes = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": "text/plain" } });
+                      if (!uploadRes.ok) throw new Error("Upload failed");
+                      setSrtLink(objectPath);
+                      toast({ title: "SRT file uploaded" });
+                    } catch {
+                      toast({ title: "Upload failed", variant: "destructive" });
+                    }
+                    e.target.value = "";
+                  }}
+                />
+                <Button size="sm" variant="outline" asChild>
+                  <span><Upload className="w-3 h-3 mr-1" />Upload .srt</span>
+                </Button>
+              </label>
+            </div>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2">
@@ -712,6 +750,24 @@ function ContentAdminCard({ item }: { item: Content }) {
 
   const lockedCount = episodes?.filter((ep) => ep.isLocked).length || 0;
 
+  const reorderMutation = useMutation({
+    mutationFn: async (orderedIds: number[]) => {
+      await apiRequest("POST", "/api/episodes/reorder", { orderedIds, contentId: item.id });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/content", String(item.id), "episodes"] });
+    },
+  });
+
+  const moveEpisode = (index: number, direction: "up" | "down") => {
+    if (!episodes) return;
+    const newList = [...episodes];
+    const swapIndex = direction === "up" ? index - 1 : index + 1;
+    if (swapIndex < 0 || swapIndex >= newList.length) return;
+    [newList[index], newList[swapIndex]] = [newList[swapIndex], newList[index]];
+    reorderMutation.mutate(newList.map((ep) => ep.epId));
+  };
+
   return (
     <Card className="p-4" data-testid={`card-admin-content-${item.id}`}>
       <div className="flex items-start gap-4">
@@ -766,12 +822,34 @@ function ContentAdminCard({ item }: { item: Content }) {
 
           {episodes && episodes.length > 0 ? (
             <div className="space-y-1">
-              {episodes.map((ep) => (
+              {episodes.map((ep, index) => (
                 <div
                   key={ep.epId}
-                  className="flex items-center gap-2 py-1.5 px-2 rounded-md bg-accent/50"
+                  className="flex items-center gap-1 py-1.5 px-2 rounded-md bg-accent/50"
                   data-testid={`row-episode-${ep.epId}`}
                 >
+                  <div className="flex flex-col shrink-0">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-4 w-5"
+                      disabled={index === 0 || reorderMutation.isPending}
+                      onClick={() => moveEpisode(index, "up")}
+                      data-testid={`button-move-up-${ep.epId}`}
+                    >
+                      <ChevronUp className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-4 w-5"
+                      disabled={index === episodes.length - 1 || reorderMutation.isPending}
+                      onClick={() => moveEpisode(index, "down")}
+                      data-testid={`button-move-down-${ep.epId}`}
+                    >
+                      <ChevronDown className="w-3 h-3" />
+                    </Button>
+                  </div>
                   <Play className="w-3 h-3 text-muted-foreground shrink-0" />
                   <span className="text-sm flex-1 truncate">{ep.epTitle}</span>
                   {ep.isLocked && (
