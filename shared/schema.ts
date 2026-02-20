@@ -33,6 +33,7 @@ export const episodes = pgTable("episodes", {
   contentId: integer("content_id").notNull(),
   epTitle: text("ep_title").notNull(),
   videoLink: text("video_link").notNull(),
+  srtLink: text("srt_link"),
   isLocked: boolean("is_locked").notNull().default(false),
   password: text("password"),
 });

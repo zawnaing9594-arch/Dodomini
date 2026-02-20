@@ -173,12 +173,13 @@ export async function registerRoutes(
     if (isNaN(epId)) return res.status(400).json({ error: "Invalid ID" });
     const existing = await storage.getEpisodeById(epId);
     if (!existing) return res.status(404).json({ error: "Episode not found" });
-    const { isLocked, password, epTitle, videoLink, contentId } = req.body;
+    const { isLocked, password, epTitle, videoLink, srtLink, contentId } = req.body;
     const updateData: any = {};
     if (typeof isLocked === "boolean") updateData.isLocked = isLocked;
     if (typeof password === "string") updateData.password = password || null;
     if (typeof epTitle === "string" && epTitle.trim()) updateData.epTitle = epTitle.trim();
     if (typeof videoLink === "string" && videoLink.trim()) updateData.videoLink = videoLink.trim();
+    if (typeof srtLink === "string") updateData.srtLink = srtLink.trim() || null;
     if (typeof contentId === "number") updateData.contentId = contentId;
     const ep = await storage.updateEpisode(epId, updateData);
     res.json({ ...ep, password: undefined });
@@ -319,9 +320,23 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/srt-proxy", async (req, res) => {
+    const url = req.query.url as string;
+    if (!url) return res.status(400).json({ error: "Missing url" });
+    try {
+      const response = await fetch(url);
+      if (!response.ok) return res.status(502).json({ error: "Failed to fetch SRT" });
+      const text = await response.text();
+      res.setHeader("Content-Type", "text/plain; charset=utf-8");
+      res.send(text);
+    } catch {
+      res.status(500).json({ error: "SRT fetch failed" });
+    }
+  });
+
   app.get("/sitemap.xml", async (_req, res) => {
     const allContent = await storage.getAllContent();
-    const baseUrl = "https://seriesmyanmar.replit.app";
+    const baseUrl = "https://seriesplus.net";
     let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>${baseUrl}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`;

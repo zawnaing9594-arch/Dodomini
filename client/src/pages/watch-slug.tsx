@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -134,18 +134,70 @@ function DownloadButton({ videoLink, epId, epTitle, contentTitle, poster }: { vi
   );
 }
 
-function VideoPlayer({ embedUrl, videoLink }: { embedUrl: string; videoLink: string }) {
+function VideoPlayer({ embedUrl, videoLink, srtLink }: { embedUrl: string; videoLink: string; srtLink?: string | null }) {
   const isDirectVideo = /\.(mp4|webm|m3u8|mov|avi|mkv)(\?.*)?$/i.test(videoLink);
   const [iframeError, setIframeError] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [srtCues, setSrtCues] = useState<import("@/lib/srtParser").SrtCue[]>([]);
+  const [currentSub, setCurrentSub] = useState("");
+  const [subsOn, setSubsOn] = useState(true);
+  const [srtLoaded, setSrtLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!srtLink) return;
+    import("@/lib/srtParser").then(({ fetchSrt }) => {
+      fetchSrt(srtLink).then((cues) => {
+        setSrtCues(cues);
+        setSrtLoaded(true);
+      }).catch(() => setSrtLoaded(false));
+    });
+  }, [srtLink]);
+
+  useEffect(() => {
+    if (!srtCues.length || !videoRef.current) return;
+    const video = videoRef.current;
+    const onTimeUpdate = () => {
+      const t = video.currentTime;
+      const cue = srtCues.find((c) => t >= c.startTime && t <= c.endTime);
+      setCurrentSub(cue ? cue.text : "");
+    };
+    video.addEventListener("timeupdate", onTimeUpdate);
+    return () => video.removeEventListener("timeupdate", onTimeUpdate);
+  }, [srtCues]);
 
   if (isDirectVideo) {
     return (
-      <video
-        src={videoLink}
-        controls
-        className="w-full h-full bg-black"
-        data-testid="video-player"
-      />
+      <div className="relative w-full h-full">
+        <video
+          ref={videoRef}
+          src={videoLink}
+          controls
+          crossOrigin="anonymous"
+          className="w-full h-full bg-black"
+          data-testid="video-player"
+        />
+        {srtLoaded && (
+          <button
+            onClick={() => setSubsOn(!subsOn)}
+            className={`absolute top-3 right-3 z-20 px-2 py-1 rounded text-xs font-bold transition-colors ${
+              subsOn ? "bg-primary text-white" : "bg-black/60 text-white/60"
+            }`}
+            data-testid="button-subtitle-toggle"
+          >
+            CC
+          </button>
+        )}
+        {subsOn && currentSub && (
+          <div
+            className="absolute bottom-12 left-1/2 -translate-x-1/2 z-10 max-w-[90%] text-center pointer-events-none"
+            data-testid="subtitle-display"
+          >
+            <span className="bg-black/80 text-white px-3 py-1.5 rounded text-sm md:text-base leading-relaxed inline-block whitespace-pre-wrap">
+              {currentSub}
+            </span>
+          </div>
+        )}
+      </div>
     );
   }
 
@@ -387,7 +439,7 @@ export default function WatchSlug() {
       ) : (
         <>
           <div className="w-full aspect-video max-h-[70vh] bg-black">
-            <VideoPlayer embedUrl={embedUrl} videoLink={episode.videoLink} />
+            <VideoPlayer embedUrl={embedUrl} videoLink={episode.videoLink} srtLink={episode.srtLink} />
           </div>
 
           <div className="px-4 md:px-8 py-6">

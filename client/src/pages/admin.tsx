@@ -539,6 +539,7 @@ function EditEpisodeDialog({ ep, contentId }: { ep: Episode; contentId: number }
   const [open, setOpen] = useState(false);
   const [epTitle, setEpTitle] = useState(ep.epTitle);
   const [videoLink, setVideoLink] = useState(ep.videoLink);
+  const [srtLink, setSrtLink] = useState(ep.srtLink || "");
   const [isLocked, setIsLocked] = useState(ep.isLocked);
   const [password, setPassword] = useState("");
   const [moveToContentId, setMoveToContentId] = useState<string>("");
@@ -552,6 +553,7 @@ function EditEpisodeDialog({ ep, contentId }: { ep: Episode; contentId: number }
     if (open) {
       setEpTitle(ep.epTitle);
       setVideoLink(ep.videoLink);
+      setSrtLink(ep.srtLink || "");
       setIsLocked(ep.isLocked);
       setPassword("");
       setMoveToContentId("");
@@ -560,7 +562,7 @@ function EditEpisodeDialog({ ep, contentId }: { ep: Episode; contentId: number }
 
   const updateMutation = useMutation({
     mutationFn: async () => {
-      const body: any = { epTitle, videoLink, isLocked };
+      const body: any = { epTitle, videoLink, srtLink, isLocked };
       if (isLocked && password) body.password = password;
       if (!isLocked) body.password = "";
       if (moveToContentId) body.contentId = Number(moveToContentId);
@@ -615,6 +617,15 @@ function EditEpisodeDialog({ ep, contentId }: { ep: Episode; contentId: number }
               onChange={(e) => setVideoLink(e.target.value)}
               placeholder="Video link"
               data-testid={`input-edit-ep-link-${ep.epId}`}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">SRT Subtitle Link (optional)</label>
+            <Input
+              value={srtLink}
+              onChange={(e) => setSrtLink(e.target.value)}
+              placeholder="https://example.com/subtitle.srt"
+              data-testid={`input-edit-ep-srt-${ep.epId}`}
             />
           </div>
           <div className="flex items-center gap-3 flex-wrap">
