@@ -288,6 +288,37 @@ export async function registerRoutes(
     res.json({ id });
   });
 
+  app.get("/api/drive-download/:fileId", async (req, res) => {
+    const { fileId } = req.params;
+    if (!fileId) return res.status(400).json({ error: "Missing fileId" });
+    try {
+      const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}&confirm=t`;
+      const response = await fetch(downloadUrl, {
+        redirect: "follow",
+        headers: { "User-Agent": "Mozilla/5.0" },
+      });
+      if (!response.ok) return res.status(502).json({ error: "Failed to fetch from Drive" });
+      const contentType = response.headers.get("content-type") || "video/mp4";
+      const contentLength = response.headers.get("content-length");
+      res.setHeader("Content-Type", contentType);
+      if (contentLength) res.setHeader("Content-Length", contentLength);
+      res.setHeader("Content-Disposition", `attachment; filename="${fileId}.mp4"`);
+      const reader = response.body?.getReader();
+      if (!reader) return res.status(502).json({ error: "No body" });
+      const pump = async () => {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          res.write(value);
+        }
+        res.end();
+      };
+      await pump();
+    } catch {
+      res.status(500).json({ error: "Download failed" });
+    }
+  });
+
   app.get("/sitemap.xml", async (_req, res) => {
     const allContent = await storage.getAllContent();
     const baseUrl = "https://seriesmyanmar.replit.app";

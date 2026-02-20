@@ -55,6 +55,15 @@ function DownloadButton({ videoLink, epId, epTitle, contentTitle, poster }: { vi
   const [progress, setProgress] = useState(0);
   const [alreadyDownloaded, setAlreadyDownloaded] = useState(false);
   const isDirectVideo = /\.(mp4|webm|m3u8|mov|avi|mkv)(\?.*)?$/i.test(videoLink);
+  const isGoogleDrive = videoLink.includes("drive.google.com");
+
+  const getDriveFileId = (url: string): string | null => {
+    if (url.includes("/file/d/")) return url.split("/file/d/")[1].split("/")[0];
+    if (url.includes("id=")) return url.split("id=")[1].split("&")[0];
+    return null;
+  };
+
+  const canDownload = isDirectVideo || isGoogleDrive;
 
   useEffect(() => {
     import("@/lib/downloadDB").then(({ isDownloaded }) => {
@@ -77,7 +86,7 @@ function DownloadButton({ videoLink, epId, epTitle, contentTitle, poster }: { vi
   const handleDownload = async () => {
     if (downloading) return;
 
-    if (!isDirectVideo) {
+    if (!canDownload) {
       window.open(videoLink, "_blank", "noopener,noreferrer");
       toast({ title: "Video link ဖွင့်ပေးပါပြီ", description: "ဖွင့်ထားတဲ့ page ကနေ video ကို save လုပ်ပါ" });
       return;
@@ -87,7 +96,12 @@ function DownloadButton({ videoLink, epId, epTitle, contentTitle, poster }: { vi
     setProgress(0);
     try {
       const { saveDownload, downloadVideoWithProgress } = await import("@/lib/downloadDB");
-      const blob = await downloadVideoWithProgress(videoLink, (p) => setProgress(p));
+      let downloadUrl = videoLink;
+      if (isGoogleDrive) {
+        const fileId = getDriveFileId(videoLink);
+        if (fileId) downloadUrl = `/api/drive-download/${fileId}`;
+      }
+      const blob = await downloadVideoWithProgress(downloadUrl, (p) => setProgress(p));
       await saveDownload({
         epId, epTitle, contentTitle, poster, videoLink,
         blob, downloadedAt: Date.now(), size: blob.size, isBookmark: false,
