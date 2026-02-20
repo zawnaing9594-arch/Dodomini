@@ -44,6 +44,8 @@ waitForPort = 5000
 [userenv.shared]
 ADMIN_PASSWORD = "admin123"
 GA_MEASUREMENT_ID = "G-JEY9EVY71R"
+VAPID_PUBLIC_KEY = "BGQm5vZlJz6Hjj3-kO-SruNdMmIAX2r4B4YbyYf7tr-IKlKC467XojSwW-IxrC7e5FrhP5TBR53XnjR1VsanYyk"
+VAPID_SUBJECT = "mailto:admin@seriesplus.app"
 
 [agent]
 integrations = ["javascript_object_storage:2.0.0", "javascript_log_in_with_replit:2.0.0"]

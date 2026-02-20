@@ -3,8 +3,11 @@ import {
   type InsertContent,
   type Episode,
   type InsertEpisode,
+  type InsertPushSubscription,
+  type PushSubscription,
   content,
   episodes,
+  pushSubscriptions,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, asc, desc } from "drizzle-orm";
@@ -24,6 +27,9 @@ export interface IStorage {
   findEpisodeBySlug(seriesSlug: string, epSlug: string): Promise<{ episode: Episode; parent: Content } | null>;
   getBannerContent(): Promise<Content[]>;
   toggleBanner(id: number, isBanner: boolean, bannerOrder?: number): Promise<Content>;
+  savePushSubscription(data: InsertPushSubscription): Promise<PushSubscription>;
+  removePushSubscription(endpoint: string): Promise<void>;
+  getAllPushSubscriptions(): Promise<PushSubscription[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -102,6 +108,23 @@ export class DatabaseStorage implements IStorage {
       .where(eq(content.id, id))
       .returning();
     return item;
+  }
+  async savePushSubscription(data: InsertPushSubscription): Promise<PushSubscription> {
+    const existing = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.endpoint, data.endpoint));
+    if (existing.length > 0) {
+      const [updated] = await db.update(pushSubscriptions).set(data).where(eq(pushSubscriptions.endpoint, data.endpoint)).returning();
+      return updated;
+    }
+    const [sub] = await db.insert(pushSubscriptions).values(data).returning();
+    return sub;
+  }
+
+  async removePushSubscription(endpoint: string): Promise<void> {
+    await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint));
+  }
+
+  async getAllPushSubscriptions(): Promise<PushSubscription[]> {
+    return db.select().from(pushSubscriptions);
   }
 }
 
