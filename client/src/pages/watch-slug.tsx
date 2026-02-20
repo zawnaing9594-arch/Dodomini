@@ -48,12 +48,9 @@ function ShareButton({ epId, title, seriesTitle, epTitle }: { epId: number; titl
   );
 }
 
-function DownloadButton({ videoLink, epId, epTitle, contentTitle, poster }: { videoLink: string; epId: number; epTitle: string; contentTitle: string; poster: string }) {
+function DownloadButton({ videoLink, epId, epTitle }: { videoLink: string; epId: number; epTitle: string; contentTitle: string; poster: string }) {
   const { isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
-  const [downloading, setDownloading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [alreadyDownloaded, setAlreadyDownloaded] = useState(false);
   const isDirectVideo = /\.(mp4|webm|m3u8|mov|avi|mkv)(\?.*)?$/i.test(videoLink);
   const isGoogleDrive = videoLink.includes("drive.google.com");
 
@@ -64,12 +61,6 @@ function DownloadButton({ videoLink, epId, epTitle, contentTitle, poster }: { vi
   };
 
   const canDownload = isDirectVideo || isGoogleDrive;
-
-  useEffect(() => {
-    import("@/lib/downloadDB").then(({ isDownloaded }) => {
-      isDownloaded(epId).then(setAlreadyDownloaded);
-    });
-  }, [epId]);
 
   if (isLoading) return null;
 
@@ -83,54 +74,39 @@ function DownloadButton({ videoLink, epId, epTitle, contentTitle, poster }: { vi
     );
   }
 
-  const handleDownload = async () => {
-    if (downloading) return;
-
+  const handleDownload = () => {
     if (!canDownload) {
       window.open(videoLink, "_blank", "noopener,noreferrer");
       toast({ title: "Video link ဖွင့်ပေးပါပြီ", description: "ဖွင့်ထားတဲ့ page ကနေ video ကို save လုပ်ပါ" });
       return;
     }
 
-    setDownloading(true);
-    setProgress(0);
-    try {
-      const { saveDownload, downloadVideoWithProgress } = await import("@/lib/downloadDB");
-      let downloadUrl = videoLink;
-      if (isGoogleDrive) {
-        const fileId = getDriveFileId(videoLink);
-        if (fileId) downloadUrl = `/api/drive-download/${fileId}`;
+    const filename = `${epTitle.replace(/[^a-zA-Z0-9\u1000-\u109F]/g, "_")}.mp4`;
+    let downloadUrl: string;
+    if (isGoogleDrive) {
+      const fileId = getDriveFileId(videoLink);
+      if (fileId) {
+        downloadUrl = `/api/drive-download/${fileId}`;
+      } else {
+        downloadUrl = `/api/video-proxy?url=${encodeURIComponent(videoLink)}&filename=${encodeURIComponent(filename)}`;
       }
-      const blob = await downloadVideoWithProgress(downloadUrl, (p) => setProgress(p));
-      await saveDownload({
-        epId, epTitle, contentTitle, poster, videoLink,
-        blob, downloadedAt: Date.now(), size: blob.size, isBookmark: false,
-      });
-      toast({ title: "Download ပြီးပါပြီ", description: `${epTitle} ကို My Downloads မှာ offline ကြည့်နိုင်ပါပြီ` });
-      setAlreadyDownloaded(true);
-    } catch {
-      toast({ title: "Download မအောင်မြင်ပါ", variant: "destructive" });
+    } else {
+      downloadUrl = `/api/video-proxy?url=${encodeURIComponent(videoLink)}&filename=${encodeURIComponent(filename)}`;
     }
-    setDownloading(false);
+
+    const a = document.createElement("a");
+    a.href = downloadUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    toast({ title: "Download စတင်ပါပြီ", description: `${epTitle} ကို download လုပ်နေပါသည်` });
   };
 
-  if (alreadyDownloaded) {
-    return (
-      <Button size="icon" variant="ghost" data-testid="button-downloaded" title="Downloaded" className="text-green-400">
-        <Check className="w-4 h-4" />
-      </Button>
-    );
-  }
-
   return (
-    <div className="relative">
-      <Button size="icon" variant="ghost" data-testid="button-download" title="Download" onClick={handleDownload} disabled={downloading}>
-        <Download className={`w-4 h-4 ${downloading ? "animate-pulse" : ""}`} />
-      </Button>
-      {downloading && progress > 0 && progress < 100 && (
-        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[8px] text-primary font-bold">{progress}%</span>
-      )}
-    </div>
+    <Button size="icon" variant="ghost" data-testid="button-download" title="Download" onClick={handleDownload}>
+      <Download className="w-4 h-4" />
+    </Button>
   );
 }
 
