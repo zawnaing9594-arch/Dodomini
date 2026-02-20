@@ -5,6 +5,9 @@ export function toSlug(text: string): string {
     .replace(/^-|-$/g, "");
 }
 
-export function getShareUrl(epId: number): string {
+export function getShareUrl(epId: number, seriesTitle?: string, epTitle?: string): string {
+  if (seriesTitle && epTitle) {
+    return `/${encodeURIComponent(toSlug(seriesTitle))}/${encodeURIComponent(toSlug(epTitle))}`;
+  }
   return `/e/${epId}`;
 }

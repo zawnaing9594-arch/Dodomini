@@ -1,13 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { type Content, type Episode } from "@shared/schema";
-import { ChevronLeft, ChevronRight, Play, Film, Bell, X, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Play, Film, Bell, X, Search, Type, Minus, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useFontFamily } from "@/hooks/use-font";
 
 function BannerCarousel({ banners }: { banners: Content[] }) {
   const [current, setCurrent] = useState(0);
@@ -316,8 +317,10 @@ export default function Home() {
     queryKey: ["/api/latest-episodes"],
   });
 
-  const { sizes } = useFontSize();
+  const { sizes, sizeIndex, decrease, increase } = useFontSize();
+  const { fontIndex, fontLabel, fonts, setFont } = useFontFamily();
   const [searchQuery, setSearchQuery] = useState("");
+  const [showSettings, setShowSettings] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -474,6 +477,14 @@ export default function Home() {
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <p className="text-xs text-muted-foreground/50">Series Plus Myanmar</p>
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className="text-xs text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors cursor-pointer flex items-center gap-1"
+              data-testid="button-settings"
+            >
+              <Type className="w-3 h-3" />
+              Font
+            </button>
             <Link href="/admin">
               <span className="text-xs text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors cursor-pointer" data-testid="link-admin">
                 Admin
@@ -481,6 +492,61 @@ export default function Home() {
             </Link>
           </div>
         </div>
+
+        {showSettings && (
+          <div className="mt-4 p-4 rounded-lg bg-card border border-border" data-testid="panel-font-settings">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground mb-2 block">Font Family</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {fonts.map((f, i) => (
+                    <button
+                      key={f.label}
+                      onClick={() => setFont(i)}
+                      className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${
+                        i === fontIndex
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
+                      }`}
+                      style={{ fontFamily: f.value }}
+                      data-testid={`button-font-${f.label.toLowerCase().replace(/\s+/g, "-")}`}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-2 block">Font Size</label>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-7 w-7"
+                    onClick={decrease}
+                    disabled={sizeIndex === 0}
+                    data-testid="button-font-size-decrease"
+                  >
+                    <Minus className="w-3 h-3" />
+                  </Button>
+                  <span className="text-xs text-muted-foreground min-w-[20px] text-center" data-testid="text-font-size">
+                    {sizeIndex + 1}
+                  </span>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-7 w-7"
+                    onClick={increase}
+                    disabled={sizeIndex === FONT_SIZES.length - 1}
+                    data-testid="button-font-size-increase"
+                  >
+                    <Plus className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </footer>
     </div>
   );

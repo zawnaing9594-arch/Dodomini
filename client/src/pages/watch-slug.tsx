@@ -11,12 +11,12 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { toSlug, getShareUrl } from "@/lib/slugs";
 
-function ShareButton({ epId, title }: { epId: number; title: string }) {
+function ShareButton({ epId, title, seriesTitle, epTitle }: { epId: number; title: string; seriesTitle: string; epTitle: string }) {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
 
   const handleShare = useCallback(async () => {
-    const url = `${window.location.origin}${getShareUrl(epId)}`;
+    const url = `${window.location.origin}${getShareUrl(epId, seriesTitle, epTitle)}`;
 
     if (navigator.share) {
       try {
@@ -33,7 +33,7 @@ function ShareButton({ epId, title }: { epId: number; title: string }) {
     } catch {
       toast({ title: "Could not copy link", variant: "destructive" });
     }
-  }, [epId, title, toast]);
+  }, [epId, title, seriesTitle, epTitle, toast]);
 
   return (
     <Button
@@ -225,7 +225,7 @@ export default function WatchSlug() {
   const embedUrl = getEmbedUrl(episode.videoLink);
 
   const navigateToEp = (ep: Episode) => {
-    setLocation(getShareUrl(ep.epId));
+    setLocation(getShareUrl(ep.epId, parent.title, ep.epTitle));
   };
 
   return (
@@ -244,16 +244,16 @@ export default function WatchSlug() {
             <p className="text-xs text-muted-foreground truncate">{parent.title}</p>
           </div>
           <div className="flex items-center gap-1">
-            <ShareButton epId={episode.epId} title={`${parent.title} - ${episode.epTitle}`} />
+            <ShareButton epId={episode.epId} title={`${parent.title} - ${episode.epTitle}`} seriesTitle={parent.title} epTitle={episode.epTitle} />
             {prevEp && (
-              <Link href={getShareUrl(prevEp.epId)}>
+              <Link href={getShareUrl(prevEp.epId, parent.title, prevEp.epTitle)}>
                 <Button size="icon" variant="ghost" data-testid="button-prev-ep">
                   <ChevronLeft className="w-5 h-5" />
                 </Button>
               </Link>
             )}
             {nextEp && (
-              <Link href={getShareUrl(nextEp.epId)}>
+              <Link href={getShareUrl(nextEp.epId, parent.title, nextEp.epTitle)}>
                 <Button size="icon" variant="ghost" data-testid="button-next-ep">
                   <ChevronRight className="w-5 h-5" />
                 </Button>

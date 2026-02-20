@@ -9,6 +9,7 @@ import SeriesDetail from "@/pages/series-detail";
 import Watch from "@/pages/watch";
 import WatchSlug from "@/pages/watch-slug";
 import Admin from "@/pages/admin";
+import { useEffect } from "react";
 
 function Router() {
   return (
@@ -24,7 +25,31 @@ function Router() {
   );
 }
 
+const FONT_FAMILIES = [
+  "'Inter', 'Noto Sans Myanmar', sans-serif",
+  "'Noto Sans Myanmar', sans-serif",
+  "'Padauk', 'Noto Sans Myanmar', sans-serif",
+  "'Pyidaungsu', 'Noto Sans Myanmar', sans-serif",
+  "system-ui, -apple-system, 'Segoe UI', sans-serif",
+  "Arial, Helvetica, sans-serif",
+  "Georgia, 'Times New Roman', serif",
+  "'Roboto', sans-serif",
+  "'Poppins', sans-serif",
+];
+
 function App() {
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("fontFamily");
+      if (saved) {
+        const idx = Math.min(parseInt(saved), FONT_FAMILIES.length - 1);
+        if (idx >= 0) {
+          document.documentElement.style.fontFamily = FONT_FAMILIES[idx];
+        }
+      }
+    } catch {}
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>

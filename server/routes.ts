@@ -234,6 +234,90 @@ export async function registerRoutes(
     res.send(xml);
   });
 
+  function isSocialBot(ua: string): boolean {
+    return /facebookexternalhit|Twitterbot|LinkedInBot|WhatsApp|Slackbot|TelegramBot|Discordbot|Pinterest|Googlebot/i.test(ua || "");
+  }
+
+  function escHtml(str: string): string {
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  function renderOgHtml(title: string, description: string, url: string, ogType: string, image?: string): string {
+    const t = escHtml(title);
+    const d = escHtml(description);
+    const u = escHtml(url);
+    const img = image ? escHtml(image) : "";
+    return `<!DOCTYPE html>
+<html lang="my">
+<head>
+  <meta charset="UTF-8" />
+  <title>${t}</title>
+  <meta name="description" content="${d}" />
+  <meta property="og:type" content="${escHtml(ogType)}" />
+  <meta property="og:title" content="${t}" />
+  <meta property="og:description" content="${d}" />
+  <meta property="og:url" content="${u}" />
+  <meta property="og:site_name" content="Series Plus Myanmar" />
+  ${img ? `<meta property="og:image" content="${img}" />` : ""}
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="${t}" />
+  <meta name="twitter:description" content="${d}" />
+  ${img ? `<meta name="twitter:image" content="${img}" />` : ""}
+</head>
+<body></body>
+</html>`;
+  }
+
+  app.get("/e/:epId", async (req, res, next) => {
+    if (!isSocialBot(req.headers["user-agent"] || "")) return next();
+    const epId = parseInt(req.params.epId);
+    if (isNaN(epId)) return next();
+    try {
+      const episode = await storage.getEpisodeById(epId);
+      if (!episode) return next();
+      const parent = await storage.getContentById(episode.contentId);
+      if (!parent) return next();
+      const title = `${parent.title} - ${episode.epTitle} | Series Plus Myanmar`;
+      const desc = `${parent.title} - ${episode.epTitle} ကို Series Plus Myanmar မှာ ကြည့်ရှုပါ`;
+      const baseUrl = `${req.protocol}://${req.get("host")}`;
+      const image = parent.poster?.startsWith("http") ? parent.poster : (parent.poster ? `${baseUrl}${parent.poster}` : "");
+      res.send(renderOgHtml(title, desc, `${baseUrl}/e/${epId}`, "video.episode", image));
+    } catch { next(); }
+  });
+
+  app.get("/:seriesSlug/:epSlug", async (req, res, next) => {
+    if (!isSocialBot(req.headers["user-agent"] || "")) return next();
+    if (req.params.seriesSlug.startsWith("api") || req.params.seriesSlug.startsWith("objects")) return next();
+    try {
+      const result = await storage.findEpisodeBySlug(
+        decodeURIComponent(req.params.seriesSlug),
+        decodeURIComponent(req.params.epSlug)
+      );
+      if (!result) return next();
+      const { episode, parent } = result;
+      const title = `${parent.title} - ${episode.epTitle} | Series Plus Myanmar`;
+      const desc = `${parent.title} - ${episode.epTitle} ကို Series Plus Myanmar မှာ ကြည့်ရှုပါ`;
+      const baseUrl = `${req.protocol}://${req.get("host")}`;
+      const image = parent.poster?.startsWith("http") ? parent.poster : (parent.poster ? `${baseUrl}${parent.poster}` : "");
+      res.send(renderOgHtml(title, desc, `${baseUrl}${req.originalUrl}`, "video.episode", image));
+    } catch { next(); }
+  });
+
+  app.get("/series/:id", async (req, res, next) => {
+    if (!isSocialBot(req.headers["user-agent"] || "")) return next();
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return next();
+    try {
+      const item = await storage.getContentById(id);
+      if (!item) return next();
+      const title = `${item.title} | Series Plus Myanmar`;
+      const desc = item.description || `${item.title} ကို Series Plus Myanmar မှာ ကြည့်ရှုပါ`;
+      const baseUrl = `${req.protocol}://${req.get("host")}`;
+      const image = item.poster?.startsWith("http") ? item.poster : (item.poster ? `${baseUrl}${item.poster}` : "");
+      res.send(renderOgHtml(title, desc, `${baseUrl}/series/${id}`, "video.tv_show", image));
+    } catch { next(); }
+  });
+
   app.get("/api/latest-episodes", async (_req, res) => {
     const allContent = await storage.getAllContent();
     const latestEps: Array<{ episode: any; contentTitle: string }> = [];

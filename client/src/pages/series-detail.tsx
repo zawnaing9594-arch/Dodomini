@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useCallback, useMemo } from "react";
-import { getShareUrl } from "@/lib/slugs";
+import { getShareUrl, toSlug } from "@/lib/slugs";
 
 function getVideoThumbnail(url: string): string | null {
   try {
@@ -24,14 +24,14 @@ function getVideoThumbnail(url: string): string | null {
   return null;
 }
 
-function EpisodeShareButton({ epId, title }: { epId: number; title: string }) {
+function EpisodeShareButton({ epId, title, seriesTitle, epTitle }: { epId: number; title: string; seriesTitle: string; epTitle: string }) {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
 
   const handleShare = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const url = `${window.location.origin}${getShareUrl(epId)}`;
+    const url = `${window.location.origin}${getShareUrl(epId, seriesTitle, epTitle)}`;
 
     if (navigator.share) {
       try {
@@ -48,7 +48,7 @@ function EpisodeShareButton({ epId, title }: { epId: number; title: string }) {
     } catch {
       toast({ title: "Could not copy link", variant: "destructive" });
     }
-  }, [epId, title, toast]);
+  }, [epId, title, seriesTitle, epTitle, toast]);
 
   return (
     <button
@@ -67,11 +67,16 @@ export default function SeriesDetail() {
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
 
+  const { data: item, isLoading: loadingContent } = useQuery<Content>({
+    queryKey: ["/api/content", id],
+  });
+
   const handleShareSeries = useCallback(async () => {
     const url = `${window.location.origin}/series/${id}`;
+    const title = item?.title || "Series Plus Myanmar";
     if (navigator.share) {
       try {
-        await navigator.share({ title: `Series Plus Myanmar`, url });
+        await navigator.share({ title, url });
         return;
       } catch {}
     }
@@ -83,11 +88,7 @@ export default function SeriesDetail() {
     } catch {
       toast({ title: "Unable to copy", description: url, variant: "destructive" });
     }
-  }, [id, toast]);
-
-  const { data: item, isLoading: loadingContent } = useQuery<Content>({
-    queryKey: ["/api/content", id],
-  });
+  }, [id, item, toast]);
 
   const { data: episodesData, isLoading: loadingEpisodes } = useQuery<Episode[]>({
     queryKey: ["/api/content", id, "episodes"],
@@ -181,7 +182,7 @@ export default function SeriesDetail() {
 
             <div className="flex items-center gap-3 flex-wrap">
               {episodes.length > 0 && (
-                <Link href={getShareUrl(episodes[0].epId)}>
+                <Link href={getShareUrl(episodes[0].epId, item.title, episodes[0].epTitle)}>
                   <Button variant="default" data-testid="button-play-first">
                     <Play className="w-4 h-4 mr-2 fill-current" />
                     Play Episode 1
@@ -224,7 +225,7 @@ export default function SeriesDetail() {
               {episodes.map((ep, index) => {
                 const thumb = getVideoThumbnail(ep.videoLink) || item.poster;
                 return (
-                  <Link key={ep.epId} href={getShareUrl(ep.epId)} className="block">
+                  <Link key={ep.epId} href={getShareUrl(ep.epId, item.title, ep.epTitle)} className="block">
                     <div
                       className="flex gap-4 py-4 group cursor-pointer hover-elevate rounded-md px-1 -mx-1"
                       data-testid={`card-episode-${ep.epId}`}
@@ -270,7 +271,7 @@ export default function SeriesDetail() {
                       </div>
 
                       <div className="shrink-0 flex items-center">
-                        <EpisodeShareButton epId={ep.epId} title={`${item.title} - ${ep.epTitle}`} />
+                        <EpisodeShareButton epId={ep.epId} title={`${item.title} - ${ep.epTitle}`} seriesTitle={item.title} epTitle={ep.epTitle} />
                       </div>
                     </div>
                   </Link>

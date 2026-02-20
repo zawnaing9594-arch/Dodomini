@@ -12,12 +12,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { getShareUrl } from "@/lib/slugs";
 
-function ShareButton({ epId, title }: { epId: number; title: string }) {
+function ShareButton({ epId, title, seriesTitle, epTitle }: { epId: number; title: string; seriesTitle: string; epTitle: string }) {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
 
   const handleShare = useCallback(async () => {
-    const url = `${window.location.origin}${getShareUrl(epId)}`;
+    const url = `${window.location.origin}${getShareUrl(epId, seriesTitle, epTitle)}`;
 
     if (navigator.share) {
       try {
@@ -34,7 +34,7 @@ function ShareButton({ epId, title }: { epId: number; title: string }) {
     } catch {
       toast({ title: "Could not copy link", variant: "destructive" });
     }
-  }, [epId, title, toast]);
+  }, [epId, title, seriesTitle, epTitle, toast]);
 
   return (
     <Button
@@ -352,16 +352,16 @@ export default function Watch() {
           </div>
           <div className="flex items-center gap-1">
             <DownloadButton videoLink={episode.videoLink} />
-            <ShareButton epId={episode.epId} title={`${parent.title} - ${episode.epTitle}`} />
+            <ShareButton epId={episode.epId} title={`${parent.title} - ${episode.epTitle}`} seriesTitle={parent.title} epTitle={episode.epTitle} />
             {prevEp && (
-              <Link href={getShareUrl(prevEp.epId)}>
+              <Link href={getShareUrl(prevEp.epId, parent.title, prevEp.epTitle)}>
                 <Button size="icon" variant="ghost" data-testid="button-prev-ep">
                   <ChevronLeft className="w-5 h-5" />
                 </Button>
               </Link>
             )}
             {nextEp && (
-              <Link href={getShareUrl(nextEp.epId)}>
+              <Link href={getShareUrl(nextEp.epId, parent.title, nextEp.epTitle)}>
                 <Button size="icon" variant="ghost" data-testid="button-next-ep">
                   <ChevronRight className="w-5 h-5" />
                 </Button>
@@ -424,7 +424,7 @@ export default function Watch() {
               <h3 className="text-sm font-medium text-muted-foreground mb-3">All Episodes</h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
                 {allEpisodes.map((ep) => (
-                  <Link key={ep.epId} href={getShareUrl(ep.epId)}>
+                  <Link key={ep.epId} href={getShareUrl(ep.epId, parent.title, ep.epTitle)}>
                     <Card
                       className={`p-3 hover-elevate cursor-pointer flex items-center gap-2 ${
                         ep.epId === Number(epId) ? "border-primary bg-primary/5" : ""
