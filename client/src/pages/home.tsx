@@ -130,7 +130,7 @@ function NotificationBell() {
     }
     if (newCount > 0 && "Notification" in window && Notification.permission === "granted") {
       const newest = latestEps[0];
-      new Notification("Series Plus Myanmar", {
+      new Notification("Series Myanmar", {
         body: `${newest.contentTitle} - ${newest.episode.epTitle}`,
         icon: "/icon-192.png",
       });
@@ -552,7 +552,7 @@ export default function Home() {
 
       <footer className="border-t border-white/5 py-6 px-4 md:px-8 lg:px-12">
         <div className="flex items-center justify-between gap-4 flex-wrap">
-          <p className="text-xs text-muted-foreground/50">Series Plus Myanmar</p>
+          <p className="text-xs text-muted-foreground/50">Series Myanmar</p>
           <div className="flex items-center gap-4">
             <button
               onClick={() => setShowSettings(!showSettings)}

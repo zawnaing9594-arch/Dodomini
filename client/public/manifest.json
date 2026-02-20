@@ -1,7 +1,7 @@
 {
-  "name": "Series Plus Myanmar",
-  "short_name": "SeriesPlus",
-  "description": "Watch your favorite movies and series",
+  "name": "Series Myanmar",
+  "short_name": "SeriesMMR",
+  "description": "မြန်မာစာတန်းထိုး ဇာတ်လမ်းတွဲများကို HD Quality ဖြင့် ကြည့်ရှုပါ",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",

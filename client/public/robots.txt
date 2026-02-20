@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /admin
 
-Sitemap: https://series-plus-myanmar.replit.app/sitemap.xml
+Sitemap: https://seriesmyanmar.replit.app/sitemap.xml

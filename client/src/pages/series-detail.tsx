@@ -73,7 +73,7 @@ export default function SeriesDetail() {
 
   const handleShareSeries = useCallback(async () => {
     const url = `${window.location.origin}/series/${id}`;
-    const title = item?.title || "Series Plus Myanmar";
+    const title = item?.title || "Series Myanmar";
     if (navigator.share) {
       try {
         await navigator.share({ title, url });

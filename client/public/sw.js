@@ -34,7 +34,7 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("push", (event) => {
-  let data = { title: "Series Plus Myanmar", body: "New content available!", icon: "/icon-192.png", url: "/" };
+  let data = { title: "Series Myanmar", body: "New content available!", icon: "/icon-192.png", url: "/" };
   try {
     if (event.data) {
       const payload = event.data.json();

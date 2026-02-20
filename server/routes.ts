@@ -131,7 +131,7 @@ export async function registerRoutes(
     const parent = await storage.getContentById(ep.contentId);
     if (parent) {
       sendPushToAll(
-        "Series Plus Myanmar",
+        "Series Myanmar",
         `${parent.title} - ${ep.epTitle} အသစ်ရောက်ပါပြီ`,
         `/e/${ep.epId}`
       ).catch(() => {});
@@ -159,7 +159,7 @@ export async function registerRoutes(
     const parent = await storage.getContentById(Number(contentId));
     if (parent && inserted.length > 0) {
       sendPushToAll(
-        "Series Plus Myanmar",
+        "Series Myanmar",
         `${parent.title} - Episode ${inserted.length} ခုအသစ်ရောက်ပါပြီ`,
         `/series/${parent.id}`
       ).catch(() => {});
@@ -290,7 +290,7 @@ export async function registerRoutes(
 
   app.get("/sitemap.xml", async (_req, res) => {
     const allContent = await storage.getAllContent();
-    const baseUrl = "https://series-plus-myanmar.replit.app";
+    const baseUrl = "https://seriesmyanmar.replit.app";
     let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>${baseUrl}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`;
@@ -325,7 +325,7 @@ export async function registerRoutes(
   <meta property="og:title" content="${t}" />
   <meta property="og:description" content="${d}" />
   <meta property="og:url" content="${u}" />
-  <meta property="og:site_name" content="Series Plus Myanmar" />
+  <meta property="og:site_name" content="Series Myanmar" />
   ${img ? `<meta property="og:image" content="${img}" />` : ""}
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="${t}" />
@@ -345,8 +345,8 @@ export async function registerRoutes(
       if (!episode) return next();
       const parent = await storage.getContentById(episode.contentId);
       if (!parent) return next();
-      const title = `${parent.title} - ${episode.epTitle} | Series Plus Myanmar`;
-      const desc = `${parent.title} - ${episode.epTitle} ကို Series Plus Myanmar မှာ ကြည့်ရှုပါ`;
+      const title = `${parent.title} - ${episode.epTitle} | Series Myanmar`;
+      const desc = `${parent.title} - ${episode.epTitle} ကို Series Myanmar မှာ ကြည့်ရှုပါ`;
       const baseUrl = `${req.protocol}://${req.get("host")}`;
       const image = parent.poster?.startsWith("http") ? parent.poster : (parent.poster ? `${baseUrl}${parent.poster}` : "");
       res.send(renderOgHtml(title, desc, `${baseUrl}/e/${epId}`, "video.episode", image));
@@ -363,8 +363,8 @@ export async function registerRoutes(
       );
       if (!result) return next();
       const { episode, parent } = result;
-      const title = `${parent.title} - ${episode.epTitle} | Series Plus Myanmar`;
-      const desc = `${parent.title} - ${episode.epTitle} ကို Series Plus Myanmar မှာ ကြည့်ရှုပါ`;
+      const title = `${parent.title} - ${episode.epTitle} | Series Myanmar`;
+      const desc = `${parent.title} - ${episode.epTitle} ကို Series Myanmar မှာ ကြည့်ရှုပါ`;
       const baseUrl = `${req.protocol}://${req.get("host")}`;
       const image = parent.poster?.startsWith("http") ? parent.poster : (parent.poster ? `${baseUrl}${parent.poster}` : "");
       res.send(renderOgHtml(title, desc, `${baseUrl}${req.originalUrl}`, "video.episode", image));
@@ -378,8 +378,8 @@ export async function registerRoutes(
     try {
       const item = await storage.getContentById(id);
       if (!item) return next();
-      const title = `${item.title} | Series Plus Myanmar`;
-      const desc = item.description || `${item.title} ကို Series Plus Myanmar မှာ ကြည့်ရှုပါ`;
+      const title = `${item.title} | Series Myanmar`;
+      const desc = item.description || `${item.title} ကို Series Myanmar မှာ ကြည့်ရှုပါ`;
       const baseUrl = `${req.protocol}://${req.get("host")}`;
       const image = item.poster?.startsWith("http") ? item.poster : (item.poster ? `${baseUrl}${item.poster}` : "");
       res.send(renderOgHtml(title, desc, `${baseUrl}/series/${id}`, "video.tv_show", image));
