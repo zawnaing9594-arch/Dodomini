@@ -17,7 +17,9 @@ A movie/series streaming platform built with React (frontend) + Express (backend
 - Series detail page with episode listing
 - Video player supporting Vimeo, Google Drive, YouTube, Telegram, Facebook, Dailymotion, and direct links
 - SRT subtitle support for direct video links
-- Download button for direct video links (requires login via Replit Auth)
+- In-app download: direct video files saved to IndexedDB for offline viewing, embedded videos bookmarked
+- "My Downloads" page (/downloads) for offline video playback and bookmark management
+- Download progress tracking with percentage display
 - Admin panel for content and episode management (bulk upload), password-protected
 - Episode editing: lock/unlock toggle, password management, title/link editing
 - Episode move: move episodes between series via admin edit dialog
@@ -25,7 +27,9 @@ A movie/series streaming platform built with React (frontend) + Express (backend
 - Password-protected premium episodes with session-based unlock (per-episode locking)
 - Poster upload via Replit Object Storage (persistent across redeployments)
 - Short share URLs using episode ID (e.g., /e/64)
+- Push notifications via Web Push API (VAPID) - notifies all subscribers when new episodes added
 - New episode notifications (bell icon on home page, browser notifications)
+- Auto-subscribe to push notifications when user clicks notification bell
 - PWA support (installable as mobile app)
 - Google Analytics integration (via GA_MEASUREMENT_ID env var)
 - Google AdSense + HilltopAds monetization
@@ -35,6 +39,7 @@ A movie/series streaming platform built with React (frontend) + Express (backend
 ## Data Models
 - `content`: id, title, type (series/movie), poster, description, isBanner, bannerOrder
 - `episodes`: epId, contentId, epTitle, videoLink, isLocked, password
+- `push_subscriptions`: id, userId, endpoint, p256dh, auth, createdAt
 
 ## API Endpoints
 - GET /api/content - List all content
@@ -59,12 +64,16 @@ A movie/series streaming platform built with React (frontend) + Express (backend
 - GET /api/admin/check - Check admin session
 - GET /api/analytics-id - Get Google Analytics measurement ID
 - GET /api/latest-episodes - Get 20 most recent episodes (for notifications)
+- GET /api/vapid-public-key - Get VAPID public key for push subscriptions
+- POST /api/push/subscribe - Subscribe to push notifications
+- POST /api/push/unsubscribe - Unsubscribe from push notifications
 
 ## Pages
 - `/` - Home (banner carousel + content grid + notification bell)
 - `/series/:id` - Series/Movie detail
 - `/watch/:epId` - Video player (by ID, internal)
 - `/e/:epId` - Video player (short share URL, e.g. /e/64)
+- `/downloads` - My Downloads (offline videos + bookmarks)
 - `/:seriesSlug/:epSlug` - Video player (legacy slug-based, backward compatible)
 - `/admin` - Admin panel (password-protected, default: admin123)
 

@@ -8,6 +8,7 @@ import Home from "@/pages/home";
 import SeriesDetail from "@/pages/series-detail";
 import Watch from "@/pages/watch";
 import WatchSlug from "@/pages/watch-slug";
+import Downloads from "@/pages/downloads";
 import Admin from "@/pages/admin";
 import { useEffect } from "react";
 
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/series/:id" component={SeriesDetail} />
       <Route path="/watch/:epId" component={Watch} />
       <Route path="/e/:epId" component={Watch} />
+      <Route path="/downloads" component={Downloads} />
       <Route path="/admin" component={Admin} />
       <Route path="/:seriesSlug/:epSlug" component={WatchSlug} />
       <Route component={NotFound} />

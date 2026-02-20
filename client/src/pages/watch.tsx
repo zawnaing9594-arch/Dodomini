@@ -107,9 +107,19 @@ function VideoPlayer({ embedUrl, videoLink }: { embedUrl: string; videoLink: str
   );
 }
 
-function DownloadButton({ videoLink }: { videoLink: string }) {
+function DownloadButton({ videoLink, epId, epTitle, contentTitle, poster }: { videoLink: string; epId: number; epTitle: string; contentTitle: string; poster: string }) {
   const { isAuthenticated, isLoading } = useAuth();
+  const { toast } = useToast();
+  const [downloading, setDownloading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [alreadyDownloaded, setAlreadyDownloaded] = useState(false);
   const isDirectVideo = /\.(mp4|webm|m3u8|mov|avi|mkv)(\?.*)?$/i.test(videoLink);
+
+  useEffect(() => {
+    import("@/lib/downloadDB").then(({ isDownloaded }) => {
+      isDownloaded(epId).then(setAlreadyDownloaded);
+    });
+  }, [epId]);
 
   if (isLoading) return null;
 
@@ -123,17 +133,50 @@ function DownloadButton({ videoLink }: { videoLink: string }) {
     );
   }
 
-  return (
-    <a
-      href={videoLink}
-      download={isDirectVideo ? true : undefined}
-      target="_blank"
-      rel="noopener noreferrer"
-    >
-      <Button size="icon" variant="ghost" data-testid="button-download" title="Download">
-        <Download className="w-4 h-4" />
+  const handleDownload = async () => {
+    if (downloading) return;
+    setDownloading(true);
+    setProgress(0);
+    try {
+      const { saveDownload, downloadVideoWithProgress } = await import("@/lib/downloadDB");
+      if (isDirectVideo) {
+        const blob = await downloadVideoWithProgress(videoLink, (p) => setProgress(p));
+        await saveDownload({
+          epId, epTitle, contentTitle, poster, videoLink,
+          blob, downloadedAt: Date.now(), size: blob.size, isBookmark: false,
+        });
+        toast({ title: "Download ပြီးပါပြီ", description: `${epTitle} ကို My Downloads မှာ ကြည့်နိုင်ပါပြီ` });
+      } else {
+        await saveDownload({
+          epId, epTitle, contentTitle, poster, videoLink,
+          downloadedAt: Date.now(), size: 0, isBookmark: true,
+        });
+        toast({ title: "Bookmark သိမ်းပြီးပါပြီ", description: `${epTitle} ကို My Downloads မှာ သိမ်းထားပါပြီ` });
+      }
+      setAlreadyDownloaded(true);
+    } catch {
+      toast({ title: "Download မအောင်မြင်ပါ", variant: "destructive" });
+    }
+    setDownloading(false);
+  };
+
+  if (alreadyDownloaded) {
+    return (
+      <Button size="icon" variant="ghost" data-testid="button-downloaded" title="Downloaded" className="text-green-400">
+        <Check className="w-4 h-4" />
       </Button>
-    </a>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <Button size="icon" variant="ghost" data-testid="button-download" title="Download" onClick={handleDownload} disabled={downloading}>
+        <Download className={`w-4 h-4 ${downloading ? "animate-pulse" : ""}`} />
+      </Button>
+      {downloading && progress > 0 && progress < 100 && (
+        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[8px] text-primary font-bold">{progress}%</span>
+      )}
+    </div>
   );
 }
 
@@ -354,7 +397,7 @@ export default function Watch() {
             <p className="text-xs text-muted-foreground truncate">{parent.title}</p>
           </div>
           <div className="flex items-center gap-1">
-            <DownloadButton videoLink={episode.videoLink} />
+            <DownloadButton videoLink={episode.videoLink} epId={episode.epId} epTitle={episode.epTitle} contentTitle={parent.title} poster={parent.poster} />
             <ShareButton epId={episode.epId} title={`${parent.title} - ${episode.epTitle}`} seriesTitle={parent.title} epTitle={episode.epTitle} />
             {prevEp && (
               <Link href={getShareUrl(prevEp.epId, parent.title, prevEp.epTitle)}>

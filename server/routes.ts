@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertContentSchema, insertEpisodeSchema } from "@shared/schema";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
+import webpush from "web-push";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -10,6 +11,57 @@ export async function registerRoutes(
 ): Promise<Server> {
 
   registerObjectStorageRoutes(app);
+
+  const vapidPublicKey = process.env.VAPID_PUBLIC_KEY || "";
+  const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY || "";
+  const vapidSubject = process.env.VAPID_SUBJECT || "mailto:admin@seriesplus.app";
+
+  if (vapidPublicKey && vapidPrivateKey) {
+    webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+  }
+
+  async function sendPushToAll(title: string, body: string, url: string) {
+    if (!vapidPublicKey || !vapidPrivateKey) return;
+    const subs = await storage.getAllPushSubscriptions();
+    for (const sub of subs) {
+      try {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          JSON.stringify({ title, body, icon: "/icon-192.png", url })
+        );
+      } catch (err: any) {
+        if (err.statusCode === 404 || err.statusCode === 410) {
+          await storage.removePushSubscription(sub.endpoint);
+        }
+      }
+    }
+  }
+
+  app.get("/api/vapid-public-key", (_req, res) => {
+    res.json({ key: vapidPublicKey });
+  });
+
+  app.post("/api/push/subscribe", async (req, res) => {
+    const { endpoint, keys } = req.body;
+    if (!endpoint || !keys?.p256dh || !keys?.auth) {
+      return res.status(400).json({ error: "Invalid subscription" });
+    }
+    const userId = (req.session as any)?.userId || null;
+    await storage.savePushSubscription({
+      userId,
+      endpoint,
+      p256dh: keys.p256dh,
+      auth: keys.auth,
+    });
+    res.json({ ok: true });
+  });
+
+  app.post("/api/push/unsubscribe", async (req, res) => {
+    const { endpoint } = req.body;
+    if (!endpoint) return res.status(400).json({ error: "Missing endpoint" });
+    await storage.removePushSubscription(endpoint);
+    res.json({ ok: true });
+  });
 
   const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
 
@@ -76,6 +128,14 @@ export async function registerRoutes(
     const parsed = insertEpisodeSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
     const ep = await storage.createEpisode(parsed.data);
+    const parent = await storage.getContentById(ep.contentId);
+    if (parent) {
+      sendPushToAll(
+        "Series Plus Myanmar",
+        `${parent.title} - ${ep.epTitle} အသစ်ရောက်ပါပြီ`,
+        `/e/${ep.epId}`
+      ).catch(() => {});
+    }
     res.json(ep);
   });
 
@@ -96,6 +156,14 @@ export async function registerRoutes(
       });
 
     const inserted = await storage.createEpisodesBulk(toInsert);
+    const parent = await storage.getContentById(Number(contentId));
+    if (parent && inserted.length > 0) {
+      sendPushToAll(
+        "Series Plus Myanmar",
+        `${parent.title} - Episode ${inserted.length} ခုအသစ်ရောက်ပါပြီ`,
+        `/series/${parent.id}`
+      ).catch(() => {});
+    }
     res.json({ count: inserted.length });
   });
 

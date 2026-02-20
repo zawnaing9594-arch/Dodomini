@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { type Content, type Episode } from "@shared/schema";
-import { ChevronLeft, ChevronRight, Play, Film, Bell, X, Search, Type, Minus, Plus, User, LogOut } from "lucide-react";
+import { ChevronLeft, ChevronRight, Play, Film, Bell, X, Search, Type, Minus, Plus, User, LogOut, Download, BellRing } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useFontFamily } from "@/hooks/use-font";
 import { useAuth } from "@/hooks/use-auth";
+import { usePushNotifications } from "@/hooks/use-push";
 
 function BannerCarousel({ banners }: { banners: Content[] }) {
   const [current, setCurrent] = useState(0);
@@ -145,9 +146,14 @@ function NotificationBell() {
     setShowPanel(false);
   };
 
+  const { isSubscribed, subscribe } = usePushNotifications();
+
   const requestNotificationPermission = async () => {
     if ("Notification" in window && Notification.permission === "default") {
       await Notification.requestPermission();
+    }
+    if (!isSubscribed) {
+      subscribe();
     }
   };
 
@@ -463,6 +469,16 @@ export default function Home() {
                 <Search className="w-5 h-5" />
               </Button>
             )}
+            <Link href="/downloads">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="text-white/80"
+                data-testid="button-my-downloads"
+              >
+                <Download className="w-5 h-5" />
+              </Button>
+            </Link>
             <NotificationBell />
             <UserAuthButton />
           </div>
