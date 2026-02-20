@@ -76,24 +76,23 @@ function DownloadButton({ videoLink, epId, epTitle, contentTitle, poster }: { vi
 
   const handleDownload = async () => {
     if (downloading) return;
+
+    if (!isDirectVideo) {
+      window.open(videoLink, "_blank", "noopener,noreferrer");
+      toast({ title: "Video link ဖွင့်ပေးပါပြီ", description: "ဖွင့်ထားတဲ့ page ကနေ video ကို save လုပ်ပါ" });
+      return;
+    }
+
     setDownloading(true);
     setProgress(0);
     try {
       const { saveDownload, downloadVideoWithProgress } = await import("@/lib/downloadDB");
-      if (isDirectVideo) {
-        const blob = await downloadVideoWithProgress(videoLink, (p) => setProgress(p));
-        await saveDownload({
-          epId, epTitle, contentTitle, poster, videoLink,
-          blob, downloadedAt: Date.now(), size: blob.size, isBookmark: false,
-        });
-        toast({ title: "Download ပြီးပါပြီ", description: `${epTitle} ကို My Downloads မှာ ကြည့်နိုင်ပါပြီ` });
-      } else {
-        await saveDownload({
-          epId, epTitle, contentTitle, poster, videoLink,
-          downloadedAt: Date.now(), size: 0, isBookmark: true,
-        });
-        toast({ title: "Bookmark သိမ်းပြီးပါပြီ", description: `${epTitle} ကို My Downloads မှာ သိမ်းထားပါပြီ` });
-      }
+      const blob = await downloadVideoWithProgress(videoLink, (p) => setProgress(p));
+      await saveDownload({
+        epId, epTitle, contentTitle, poster, videoLink,
+        blob, downloadedAt: Date.now(), size: blob.size, isBookmark: false,
+      });
+      toast({ title: "Download ပြီးပါပြီ", description: `${epTitle} ကို My Downloads မှာ offline ကြည့်နိုင်ပါပြီ` });
       setAlreadyDownloaded(true);
     } catch {
       toast({ title: "Download မအောင်မြင်ပါ", variant: "destructive" });
