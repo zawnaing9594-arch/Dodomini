@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { type Content, type Episode } from "@shared/schema";
-import { ChevronLeft, ChevronRight, Play, Film, Bell, X, Search, Type, Minus, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Play, Film, Bell, X, Search, Type, Minus, Plus, User, LogOut } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useFontFamily } from "@/hooks/use-font";
+import { useAuth } from "@/hooks/use-auth";
 
 function BannerCarousel({ banners }: { banners: Content[] }) {
   const [current, setCurrent] = useState(0);
@@ -219,6 +220,65 @@ function NotificationBell() {
   );
 }
 
+function UserAuthButton() {
+  const { user, isLoading, isAuthenticated, logout } = useAuth();
+  const [showMenu, setShowMenu] = useState(false);
+
+  if (isLoading) return null;
+
+  if (!isAuthenticated) {
+    return (
+      <a href="/api/login">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-white/80 gap-1.5"
+          data-testid="button-login"
+        >
+          <User className="w-4 h-4" />
+          <span className="hidden sm:inline text-xs">Login</span>
+        </Button>
+      </a>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setShowMenu(!showMenu)}
+        className="flex items-center gap-1.5 text-white/80 hover:text-white transition-colors"
+        data-testid="button-user-menu"
+      >
+        {user?.profileImageUrl ? (
+          <img src={user.profileImageUrl} alt="" className="w-6 h-6 rounded-full" />
+        ) : (
+          <User className="w-4 h-4" />
+        )}
+        <span className="hidden sm:inline text-xs truncate max-w-[80px]">
+          {user?.firstName || "User"}
+        </span>
+      </button>
+      {showMenu && (
+        <div className="absolute right-0 top-full mt-2 z-50">
+          <Card className="p-2 min-w-[140px] shadow-xl">
+            <p className="text-xs text-muted-foreground px-2 py-1 truncate">
+              {user?.email || user?.firstName || "User"}
+            </p>
+            <button
+              onClick={() => logout()}
+              className="flex items-center gap-2 w-full px-2 py-1.5 text-sm text-left hover:bg-accent rounded-md transition-colors"
+              data-testid="button-logout"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Logout
+            </button>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ContentCard({ item, isNew, titleClass }: { item: Content; isNew?: boolean; titleClass?: string }) {
   return (
     <Link href={`/series/${item.id}`}>
@@ -404,6 +464,7 @@ export default function Home() {
               </Button>
             )}
             <NotificationBell />
+            <UserAuthButton />
           </div>
         </div>
       </header>

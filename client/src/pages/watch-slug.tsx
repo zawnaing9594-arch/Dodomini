@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link, useLocation } from "wouter";
 import { type Content, type Episode } from "@shared/schema";
-import { ArrowLeft, Lock, Play, ChevronLeft, ChevronRight, Share2, Check } from "lucide-react";
+import { ArrowLeft, Lock, Play, ChevronLeft, ChevronRight, Share2, Check, Download, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useMemo, useCallback } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { toSlug, getShareUrl } from "@/lib/slugs";
 
 function ShareButton({ epId, title, seriesTitle, epTitle }: { epId: number; title: string; seriesTitle: string; epTitle: string }) {
@@ -44,6 +45,36 @@ function ShareButton({ epId, title, seriesTitle, epTitle }: { epId: number; titl
     >
       {copied ? <Check className="w-4 h-4 text-green-400" /> : <Share2 className="w-4 h-4" />}
     </Button>
+  );
+}
+
+function DownloadButton({ videoLink }: { videoLink: string }) {
+  const { isAuthenticated, isLoading } = useAuth();
+  const isDirectVideo = /\.(mp4|webm|m3u8|mov|avi|mkv)(\?.*)?$/i.test(videoLink);
+
+  if (isLoading) return null;
+
+  if (!isAuthenticated) {
+    return (
+      <a href="/api/login">
+        <Button size="icon" variant="ghost" data-testid="button-login-download" title="Login to download">
+          <LogIn className="w-4 h-4" />
+        </Button>
+      </a>
+    );
+  }
+
+  return (
+    <a
+      href={videoLink}
+      download={isDirectVideo ? true : undefined}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <Button size="icon" variant="ghost" data-testid="button-download" title="Download">
+        <Download className="w-4 h-4" />
+      </Button>
+    </a>
   );
 }
 
@@ -244,6 +275,7 @@ export default function WatchSlug() {
             <p className="text-xs text-muted-foreground truncate">{parent.title}</p>
           </div>
           <div className="flex items-center gap-1">
+            <DownloadButton videoLink={episode.videoLink} />
             <ShareButton epId={episode.epId} title={`${parent.title} - ${episode.epTitle}`} seriesTitle={parent.title} epTitle={episode.epTitle} />
             {prevEp && (
               <Link href={getShareUrl(prevEp.epId, parent.title, prevEp.epTitle)}>

@@ -111,14 +111,12 @@ function DownloadButton({ videoLink }: { videoLink: string }) {
   const { isAuthenticated, isLoading } = useAuth();
   const isDirectVideo = /\.(mp4|webm|m3u8|mov|avi|mkv)(\?.*)?$/i.test(videoLink);
 
-  if (!isDirectVideo) return null;
-
   if (isLoading) return null;
 
   if (!isAuthenticated) {
     return (
       <a href="/api/login">
-        <Button size="icon" variant="ghost" data-testid="button-login-download">
+        <Button size="icon" variant="ghost" data-testid="button-login-download" title="Login to download">
           <LogIn className="w-4 h-4" />
         </Button>
       </a>
@@ -126,8 +124,13 @@ function DownloadButton({ videoLink }: { videoLink: string }) {
   }
 
   return (
-    <a href={videoLink} download target="_blank" rel="noopener noreferrer">
-      <Button size="icon" variant="ghost" data-testid="button-download">
+    <a
+      href={videoLink}
+      download={isDirectVideo ? true : undefined}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <Button size="icon" variant="ghost" data-testid="button-download" title="Download">
         <Download className="w-4 h-4" />
       </Button>
     </a>
