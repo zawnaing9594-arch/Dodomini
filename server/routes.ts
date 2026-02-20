@@ -336,6 +336,33 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/video-stream", async (req, res) => {
+    const url = req.query.url as string;
+    if (!url) return res.status(400).json({ error: "Missing url" });
+    try {
+      const response = await fetch(url, {
+        redirect: "follow",
+        headers: { "User-Agent": "Mozilla/5.0" },
+      });
+      if (!response.ok) return res.status(502).json({ error: "Failed to fetch video" });
+      const contentType = response.headers.get("content-type") || "video/mp4";
+      const contentLength = response.headers.get("content-length");
+      res.setHeader("Content-Type", contentType);
+      if (contentLength) res.setHeader("Content-Length", contentLength);
+      res.setHeader("Accept-Ranges", "none");
+      const reader = response.body?.getReader();
+      if (!reader) return res.status(502).json({ error: "No body" });
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        res.write(value);
+      }
+      res.end();
+    } catch {
+      res.status(500).json({ error: "Stream failed" });
+    }
+  });
+
   app.get("/api/video-proxy", async (req, res) => {
     const url = req.query.url as string;
     const filename = (req.query.filename as string) || "video.mp4";
