@@ -544,9 +544,9 @@ function VideoUploadButton({ onUploaded, testId }: { onUploaded: (url: string) =
   const { toast } = useToast();
 
   const handleUpload = useCallback(async (file: File) => {
-    const maxSize = 50 * 1024 * 1024;
+    const maxSize = 1024 * 1024 * 1024;
     if (file.size > maxSize) {
-      toast({ title: "File too large", description: "Maximum 50MB allowed", variant: "destructive" });
+      toast({ title: "File too large", description: "Maximum 1GB allowed", variant: "destructive" });
       return;
     }
     setUploading(true);

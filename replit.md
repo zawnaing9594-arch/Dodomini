@@ -58,7 +58,7 @@ A movie/series streaming platform built with React (frontend) + Express (backend
 - GET /api/banners - Get banner content (ordered)
 - POST /api/banners/toggle - Toggle banner status (admin-only)
 - POST /api/banners/reorder - Reorder banners atomically (admin-only)
-- POST /api/uploads/request-url - Get presigned URL for file upload (admin-only)
+- POST /api/uploads/request-url - Get presigned URL for file upload (admin-only, max 1GB)
 - GET /objects/* - Serve uploaded files from object storage
 - POST /api/admin/login - Admin login with password
 - GET /api/admin/check - Check admin session
