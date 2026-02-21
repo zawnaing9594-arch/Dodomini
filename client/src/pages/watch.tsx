@@ -68,7 +68,7 @@ function isMyanmarText(text: string): boolean {
   return /[\u1000-\u109F]/.test(text);
 }
 
-function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef }: { embedUrl: string; videoLink: string; srtLink?: string | null; containerRef: React.RefObject<HTMLDivElement | null> }) {
+function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seriesTitle }: { embedUrl: string; videoLink: string; srtLink?: string | null; containerRef: React.RefObject<HTMLDivElement | null>; epTitle?: string; seriesTitle?: string }) {
   const dropboxStreamUrl = getDropboxStreamUrl(videoLink);
   const isObjectStorage = videoLink.startsWith("/objects/");
   const isDirectVideo = dropboxStreamUrl ? true : isObjectStorage || /\.(mp4|webm|m3u8|mov|avi|mkv)(\?.*)?$/i.test(videoLink);
@@ -177,8 +177,7 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef }: { embedUrl:
         className="relative w-full h-full select-none"
         onMouseMove={showControlsTemporarily}
         onMouseLeave={() => { if (isPlaying) setShowControls(false); }}
-        onClick={(e) => { if ((e.target as HTMLElement).closest("[data-controls]")) return; togglePlay(); showControlsTemporarily(); }}
-        onDoubleClick={(e) => { if ((e.target as HTMLElement).closest("[data-controls]")) return; toggleFullscreen(); }}
+        onTouchStart={showControlsTemporarily}
       >
         <video
           ref={videoRef}
@@ -188,6 +187,8 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef }: { embedUrl:
           crossOrigin="anonymous"
           className="w-full h-full bg-black object-contain"
           data-testid="video-player"
+          onClick={(e) => { e.stopPropagation(); togglePlay(); showControlsTemporarily(); }}
+          onDoubleClick={(e) => { e.stopPropagation(); toggleFullscreen(); }}
           onPlay={() => { setIsPlaying(true); setShowBigPlay(false); }}
           onPause={() => setIsPlaying(false)}
           onTimeUpdate={() => {
@@ -211,13 +212,34 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef }: { embedUrl:
           }}
         />
 
-        <img
-          src={logoImg}
-          alt="Series Plus"
-          className="absolute top-3 right-3 z-30 pointer-events-none opacity-70"
-          style={{ height: isFullscreen ? "48px" : "32px", width: "auto", borderRadius: "4px" }}
-          data-testid="video-logo"
-        />
+        <div
+          className="absolute top-0 left-0 right-0 z-30 flex items-start justify-between p-3 md:p-4 transition-opacity duration-300 pointer-events-none"
+          style={{
+            opacity: showControls ? 1 : 0,
+            background: "linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%)",
+            paddingBottom: "40px",
+          }}
+        >
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <img
+              src={logoImg}
+              alt="Series Plus"
+              className="shrink-0"
+              style={{ height: isFullscreen ? "56px" : "44px", width: "auto", borderRadius: "6px" }}
+              data-testid="video-logo"
+            />
+            {(epTitle || seriesTitle) && (
+              <div className="min-w-0">
+                {seriesTitle && (
+                  <p className="text-white/70 text-xs md:text-sm truncate" data-testid="video-series-title">{seriesTitle}</p>
+                )}
+                {epTitle && (
+                  <p className="text-white font-medium text-sm md:text-base truncate" data-testid="video-ep-title">{epTitle}</p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
 
         {showBigPlay && !isPlaying && (
           <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
@@ -229,18 +251,25 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef }: { embedUrl:
 
         {subsOn && currentSub && (
           <div
-            className="absolute left-1/2 -translate-x-1/2 z-20 max-w-[90%] text-center pointer-events-none"
-            style={{ bottom: showControls ? "72px" : "24px", transition: "bottom 0.3s ease" }}
+            className="absolute left-1/2 -translate-x-1/2 z-20 text-center pointer-events-none px-2"
+            style={{
+              bottom: showControls ? (isFullscreen ? "80px" : "64px") : (isFullscreen ? "32px" : "16px"),
+              transition: "bottom 0.3s ease",
+              maxWidth: isFullscreen ? "80%" : "92%",
+            }}
             data-testid="subtitle-display"
           >
             <span
-              className="px-4 py-2 rounded-md text-base md:text-lg leading-relaxed inline-block whitespace-pre-wrap"
+              className="inline-block whitespace-pre-wrap leading-relaxed"
               style={{
                 background: "rgba(0,0,0,0.85)",
                 color: "#fff",
                 fontFamily: isMyanmarText(currentSub) ? "'Pyidaungsu', 'Noto Sans Myanmar', sans-serif" : "inherit",
                 textShadow: "0 1px 4px rgba(0,0,0,0.8)",
                 letterSpacing: "0.02em",
+                padding: isFullscreen ? "8px 20px" : "4px 12px",
+                borderRadius: "6px",
+                fontSize: isFullscreen ? "1.25rem" : "0.875rem",
               }}
             >
               {currentSub}
@@ -249,16 +278,17 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef }: { embedUrl:
         )}
 
         <div
-          data-controls
           className="absolute bottom-0 left-0 right-0 z-30 transition-opacity duration-300"
           style={{ opacity: showControls ? 1 : 0, pointerEvents: showControls ? "auto" : "none" }}
+          onClick={(e) => e.stopPropagation()}
         >
           <div className="bg-gradient-to-t from-black/90 via-black/50 to-transparent pt-16 pb-3 px-3 md:px-5">
             <div
               ref={progressRef}
-              className="group/progress relative h-1 hover:h-2 transition-all cursor-pointer mb-3 rounded-full bg-white/20"
-              onClick={handleProgressClick}
+              className="group/progress relative h-1.5 hover:h-2.5 transition-all cursor-pointer mb-3 rounded-full bg-white/20"
+              onClick={(e) => { e.stopPropagation(); handleProgressClick(e); }}
               onMouseDown={(e) => {
+                e.stopPropagation();
                 setIsSeeking(true);
                 handleProgressClick(e);
                 const onMove = (me: MouseEvent) => {
@@ -286,19 +316,19 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef }: { embedUrl:
                 className="absolute top-0 left-0 h-full rounded-full bg-red-500"
                 style={{ width: duration ? `${(currentTime / duration) * 100}%` : "0%" }}
               >
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-red-500 opacity-0 group-hover/progress:opacity-100 transition-opacity shadow-md" />
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-red-500 opacity-0 group-hover/progress:opacity-100 transition-opacity shadow-md" />
               </div>
             </div>
 
             <div className="flex items-center gap-2 md:gap-3">
-              <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="text-white hover:text-white/80 transition-colors" data-testid="button-play-pause">
+              <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="text-white hover:text-white/80 transition-colors p-1" data-testid="button-play-pause">
                 {isPlaying ? <Pause className="w-5 h-5 md:w-6 md:h-6 fill-white" /> : <Play className="w-5 h-5 md:w-6 md:h-6 fill-white ml-0.5" />}
               </button>
 
-              <button onClick={(e) => { e.stopPropagation(); skip(-10); }} className="text-white/80 hover:text-white text-xs font-bold hidden md:block" data-testid="button-rewind">
+              <button onClick={(e) => { e.stopPropagation(); skip(-10); }} className="text-white/80 hover:text-white text-xs font-bold p-1 hidden md:block" data-testid="button-rewind">
                 -10s
               </button>
-              <button onClick={(e) => { e.stopPropagation(); skip(10); }} className="text-white/80 hover:text-white text-xs font-bold hidden md:block" data-testid="button-forward">
+              <button onClick={(e) => { e.stopPropagation(); skip(10); }} className="text-white/80 hover:text-white text-xs font-bold p-1 hidden md:block" data-testid="button-forward">
                 +10s
               </button>
 
@@ -306,7 +336,7 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef }: { embedUrl:
                 <button onClick={(e) => {
                   e.stopPropagation();
                   if (videoRef.current) { videoRef.current.muted = !videoRef.current.muted; }
-                }} className="text-white hover:text-white/80" data-testid="button-mute">
+                }} className="text-white hover:text-white/80 p-1" data-testid="button-mute">
                   {isMuted || volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
                 </button>
                 <input
@@ -335,15 +365,15 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef }: { embedUrl:
               {srtLoaded && (
                 <button
                   onClick={(e) => { e.stopPropagation(); setSubsOn(!subsOn); }}
-                  className={`text-xs font-bold px-2 py-0.5 rounded transition-colors ${subsOn ? "bg-red-500 text-white" : "bg-white/20 text-white/60"}`}
+                  className={`text-xs font-bold px-2 py-1 rounded transition-colors ${subsOn ? "bg-red-500 text-white" : "bg-white/20 text-white/60"}`}
                   data-testid="button-subtitle-toggle"
                 >
                   CC
                 </button>
               )}
 
-              <button onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} className="text-white hover:text-white/80" data-testid="button-fullscreen">
-                {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+              <button onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} className="text-white hover:text-white/80 p-1" data-testid="button-fullscreen">
+                {isFullscreen ? <Minimize className="w-5 h-5 md:w-6 md:h-6" /> : <Maximize className="w-5 h-5 md:w-6 md:h-6" />}
               </button>
             </div>
           </div>
@@ -365,13 +395,15 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef }: { embedUrl:
           allowFullScreen
           data-testid="video-iframe"
         />
-        <img
-          src={logoImg}
-          alt="Series Plus"
-          className="absolute top-3 right-3 z-30 pointer-events-none opacity-70"
-          style={{ height: "32px", width: "auto", borderRadius: "4px" }}
-          data-testid="video-logo"
-        />
+        <div className="absolute top-0 left-0 right-0 z-30 flex items-center gap-2 p-3 pointer-events-none" style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 100%)", paddingBottom: "30px" }}>
+          <img src={logoImg} alt="Series Plus" style={{ height: "44px", width: "auto", borderRadius: "6px" }} data-testid="video-logo" />
+          {(epTitle || seriesTitle) && (
+            <div className="min-w-0">
+              {seriesTitle && <p className="text-white/70 text-xs truncate">{seriesTitle}</p>}
+              {epTitle && <p className="text-white font-medium text-sm truncate">{epTitle}</p>}
+            </div>
+          )}
+        </div>
       </div>
     );
   }
@@ -386,13 +418,15 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef }: { embedUrl:
         onError={() => setIframeError(true)}
         data-testid="video-iframe"
       />
-      <img
-        src={logoImg}
-        alt="Series Plus"
-        className="absolute top-3 right-3 z-30 pointer-events-none opacity-70"
-        style={{ height: "32px", width: "auto", borderRadius: "4px" }}
-        data-testid="video-logo"
-      />
+      <div className="absolute top-0 left-0 right-0 z-30 flex items-center gap-2 p-3 pointer-events-none" style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 100%)", paddingBottom: "30px" }}>
+        <img src={logoImg} alt="Series Plus" style={{ height: "44px", width: "auto", borderRadius: "6px" }} data-testid="video-logo" />
+        {(epTitle || seriesTitle) && (
+          <div className="min-w-0">
+            {seriesTitle && <p className="text-white/70 text-xs truncate">{seriesTitle}</p>}
+            {epTitle && <p className="text-white font-medium text-sm truncate">{epTitle}</p>}
+          </div>
+        )}
+      </div>
       {iframeError && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/80 text-white text-center p-6">
           <div>
@@ -475,7 +509,7 @@ function DownloadButton({ videoLink, epId, epTitle }: { videoLink: string; epId:
   );
 }
 
-function VideoContainer({ embedUrl, videoLink, srtLink }: { embedUrl: string; videoLink: string; srtLink?: string | null }) {
+function VideoContainer({ embedUrl, videoLink, srtLink, epTitle, seriesTitle }: { embedUrl: string; videoLink: string; srtLink?: string | null; epTitle?: string; seriesTitle?: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -492,7 +526,7 @@ function VideoContainer({ embedUrl, videoLink, srtLink }: { embedUrl: string; vi
       data-testid="video-container"
       onContextMenu={(e) => e.preventDefault()}
     >
-      <VideoPlayer embedUrl={embedUrl} videoLink={videoLink} srtLink={srtLink} containerRef={containerRef} />
+      <VideoPlayer embedUrl={embedUrl} videoLink={videoLink} srtLink={srtLink} containerRef={containerRef} epTitle={epTitle} seriesTitle={seriesTitle} />
     </div>
   );
 }
@@ -695,7 +729,7 @@ export default function Watch() {
         </div>
       ) : (
         <>
-          <VideoContainer embedUrl={embedUrl} videoLink={episode.videoLink} srtLink={episode.srtLink} />
+          <VideoContainer embedUrl={embedUrl} videoLink={episode.videoLink} srtLink={episode.srtLink} epTitle={episode.epTitle} seriesTitle={parent.title} />
 
           <div className="px-4 md:px-8 py-6">
             <h2 className="text-xl font-semibold mb-1" data-testid="text-now-playing">
