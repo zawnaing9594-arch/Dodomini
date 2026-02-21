@@ -385,6 +385,87 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
   const isFacebook = videoLink.includes("facebook.com") || videoLink.includes("fb.watch") || videoLink.includes("fb.com");
   const isGoogleDrive = embedUrl.includes("drive.google.com");
 
+  const [embedSubStarted, setEmbedSubStarted] = useState(false);
+  const [embedSubTime, setEmbedSubTime] = useState(0);
+  const embedSubTimerRef = useRef<ReturnType<typeof setInterval>>();
+  const embedSubStartTimeRef = useRef(0);
+
+  useEffect(() => {
+    if (!embedSubStarted || !srtCues.length) return;
+    embedSubStartTimeRef.current = Date.now() - embedSubTime * 1000;
+    embedSubTimerRef.current = setInterval(() => {
+      const elapsed = (Date.now() - embedSubStartTimeRef.current) / 1000;
+      setEmbedSubTime(elapsed);
+      const cue = srtCues.find((c) => elapsed >= c.startTime && elapsed <= c.endTime);
+      setCurrentSub(cue ? cue.text : "");
+    }, 100);
+    return () => { if (embedSubTimerRef.current) clearInterval(embedSubTimerRef.current); };
+  }, [embedSubStarted, srtCues]);
+
+  const embedSubControls = srtLoaded && (
+    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2" data-testid="embed-sub-controls">
+      {!embedSubStarted ? (
+        <button
+          onClick={() => { setEmbedSubStarted(true); setEmbedSubTime(0); }}
+          className="flex items-center gap-1.5 bg-black/80 hover:bg-black/90 text-white text-xs font-medium px-3 py-1.5 rounded-full backdrop-blur-sm transition-colors"
+          data-testid="button-start-subtitle"
+        >
+          <Subtitles className="w-3.5 h-3.5" />
+          Start Subtitle
+        </button>
+      ) : (
+        <>
+          <button
+            onClick={() => { setSubsOn(!subsOn); }}
+            className={`text-xs font-bold px-2 py-1 rounded transition-colors ${subsOn ? "bg-red-500 text-white" : "bg-white/20 text-white/60"}`}
+            data-testid="button-embed-cc"
+          >
+            CC
+          </button>
+          <span className="text-white/70 text-xs tabular-nums bg-black/60 px-2 py-1 rounded">
+            {formatTime(embedSubTime)}
+          </span>
+          <button
+            onClick={() => {
+              setEmbedSubStarted(false);
+              setEmbedSubTime(0);
+              setCurrentSub("");
+              if (embedSubTimerRef.current) clearInterval(embedSubTimerRef.current);
+            }}
+            className="text-white/60 hover:text-white text-xs bg-black/60 px-2 py-1 rounded transition-colors"
+            data-testid="button-reset-subtitle"
+          >
+            Reset
+          </button>
+        </>
+      )}
+    </div>
+  );
+
+  const embedSubDisplay = subsOn && currentSub && embedSubStarted && (
+    <div
+      className="absolute left-1/2 -translate-x-1/2 z-30 text-center pointer-events-none px-2"
+      style={{ bottom: srtLoaded ? "48px" : "16px", maxWidth: "90%" }}
+      data-testid="embed-subtitle-display"
+    >
+      <span
+        className="inline-block whitespace-pre-wrap leading-relaxed"
+        style={{
+          background: "rgba(0,0,0,0.85)",
+          color: "#fff",
+          fontFamily: isMyanmarText(currentSub) ? "'Pyidaungsu', 'Noto Sans Myanmar', sans-serif" : "inherit",
+          textShadow: "0 1px 4px rgba(0,0,0,0.8)",
+          letterSpacing: "0.02em",
+          padding: "4px 12px",
+          borderRadius: "6px",
+          fontSize: "0.875rem",
+        }}
+      >
+        {currentSub}
+      </span>
+    </div>
+  );
+
   if (isFacebook) {
     return (
       <div className="relative w-full h-full">
@@ -404,6 +485,8 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
             </div>
           )}
         </div>
+        {embedSubDisplay}
+        {embedSubControls}
       </div>
     );
   }
@@ -427,6 +510,8 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
           </div>
         )}
       </div>
+      {embedSubDisplay}
+      {embedSubControls}
       {iframeError && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/80 text-white text-center p-6">
           <div>
