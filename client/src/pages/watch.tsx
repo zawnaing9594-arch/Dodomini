@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import { type Content, type Episode } from "@shared/schema";
-import { ArrowLeft, Lock, Play, ChevronLeft, ChevronRight, Share2, Check, Maximize, Minimize, Download, LogIn } from "lucide-react";
+import { ArrowLeft, Lock, Play, Pause, ChevronLeft, ChevronRight, Share2, Check, Maximize, Minimize, Download, LogIn, Volume2, VolumeX, Settings, Subtitles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { getShareUrl, getShareLink } from "@/lib/slugs";
+import logoImg from "@assets/IMG_9941_1771683117938.jpeg";
 
 function ShareButton({ contentId, episodeNumber, title }: { contentId: number; episodeNumber: number; title: string }) {
   const { toast } = useToast();
@@ -54,16 +55,42 @@ function getDropboxStreamUrl(url: string): string | null {
   return `/api/video-stream?url=${encodeURIComponent(rawUrl)}`;
 }
 
-function VideoPlayer({ embedUrl, videoLink, srtLink }: { embedUrl: string; videoLink: string; srtLink?: string | null }) {
+function formatTime(s: number): string {
+  if (!isFinite(s)) return "0:00";
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = Math.floor(s % 60);
+  if (h > 0) return `${h}:${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
+  return `${m}:${sec.toString().padStart(2, "0")}`;
+}
+
+function isMyanmarText(text: string): boolean {
+  return /[\u1000-\u109F]/.test(text);
+}
+
+function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef }: { embedUrl: string; videoLink: string; srtLink?: string | null; containerRef: React.RefObject<HTMLDivElement | null> }) {
   const dropboxStreamUrl = getDropboxStreamUrl(videoLink);
-  const isDirectVideo = dropboxStreamUrl ? true : /\.(mp4|webm|m3u8|mov|avi|mkv)(\?.*)?$/i.test(videoLink);
+  const isObjectStorage = videoLink.startsWith("/objects/");
+  const isDirectVideo = dropboxStreamUrl ? true : isObjectStorage || /\.(mp4|webm|m3u8|mov|avi|mkv)(\?.*)?$/i.test(videoLink);
   const directSrc = dropboxStreamUrl || videoLink;
   const [iframeError, setIframeError] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const progressRef = useRef<HTMLDivElement>(null);
+  const controlsTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const [srtCues, setSrtCues] = useState<import("@/lib/srtParser").SrtCue[]>([]);
   const [currentSub, setCurrentSub] = useState("");
   const [subsOn, setSubsOn] = useState(true);
   const [srtLoaded, setSrtLoaded] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [buffered, setBuffered] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isSeeking, setIsSeeking] = useState(false);
+  const [showBigPlay, setShowBigPlay] = useState(true);
 
   useEffect(() => {
     if (!srtLink) return;
@@ -87,38 +114,240 @@ function VideoPlayer({ embedUrl, videoLink, srtLink }: { embedUrl: string; video
     return () => video.removeEventListener("timeupdate", onTimeUpdate);
   }, [srtCues]);
 
+  useEffect(() => {
+    const handleFS = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handleFS);
+    return () => document.removeEventListener("fullscreenchange", handleFS);
+  }, []);
+
+  const showControlsTemporarily = useCallback(() => {
+    setShowControls(true);
+    if (controlsTimerRef.current) clearTimeout(controlsTimerRef.current);
+    controlsTimerRef.current = setTimeout(() => {
+      if (videoRef.current && !videoRef.current.paused) setShowControls(false);
+    }, 3000);
+  }, []);
+
+  const togglePlay = useCallback(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) { v.play(); setShowBigPlay(false); } else v.pause();
+  }, []);
+
+  const toggleFullscreen = useCallback(async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await containerRef.current?.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch {}
+  }, [containerRef]);
+
+  const handleProgressClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!videoRef.current || !progressRef.current) return;
+    const rect = progressRef.current.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    videoRef.current.currentTime = pct * duration;
+  }, [duration]);
+
+  const skip = useCallback((seconds: number) => {
+    if (!videoRef.current) return;
+    videoRef.current.currentTime = Math.max(0, Math.min(duration, videoRef.current.currentTime + seconds));
+  }, [duration]);
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      switch (e.key) {
+        case " ": case "k": e.preventDefault(); togglePlay(); break;
+        case "ArrowLeft": e.preventDefault(); skip(-10); break;
+        case "ArrowRight": e.preventDefault(); skip(10); break;
+        case "f": e.preventDefault(); toggleFullscreen(); break;
+        case "m": e.preventDefault(); if (videoRef.current) { videoRef.current.muted = !videoRef.current.muted; } break;
+      }
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [togglePlay, skip, toggleFullscreen]);
+
   if (isDirectVideo) {
     return (
-      <div className="relative w-full h-full">
+      <div
+        className="relative w-full h-full select-none"
+        onMouseMove={showControlsTemporarily}
+        onMouseLeave={() => { if (isPlaying) setShowControls(false); }}
+        onClick={(e) => { if ((e.target as HTMLElement).closest("[data-controls]")) return; togglePlay(); showControlsTemporarily(); }}
+        onDoubleClick={(e) => { if ((e.target as HTMLElement).closest("[data-controls]")) return; toggleFullscreen(); }}
+      >
         <video
           ref={videoRef}
           src={directSrc}
-          controls
+          preload="auto"
+          playsInline
           crossOrigin="anonymous"
-          className="w-full h-full bg-black"
+          className="w-full h-full bg-black object-contain"
           data-testid="video-player"
+          onPlay={() => { setIsPlaying(true); setShowBigPlay(false); }}
+          onPause={() => setIsPlaying(false)}
+          onTimeUpdate={() => {
+            if (!isSeeking && videoRef.current) {
+              setCurrentTime(videoRef.current.currentTime);
+            }
+          }}
+          onLoadedMetadata={() => {
+            if (videoRef.current) setDuration(videoRef.current.duration);
+          }}
+          onProgress={() => {
+            if (videoRef.current && videoRef.current.buffered.length > 0) {
+              setBuffered(videoRef.current.buffered.end(videoRef.current.buffered.length - 1));
+            }
+          }}
+          onVolumeChange={() => {
+            if (videoRef.current) {
+              setVolume(videoRef.current.volume);
+              setIsMuted(videoRef.current.muted);
+            }
+          }}
         />
-        {srtLoaded && (
-          <button
-            onClick={() => setSubsOn(!subsOn)}
-            className={`absolute top-3 right-3 z-20 px-2 py-1 rounded text-xs font-bold transition-colors ${
-              subsOn ? "bg-primary text-white" : "bg-black/60 text-white/60"
-            }`}
-            data-testid="button-subtitle-toggle"
-          >
-            CC
-          </button>
+
+        <img
+          src={logoImg}
+          alt="Series Plus"
+          className="absolute top-3 right-3 z-30 pointer-events-none opacity-70"
+          style={{ height: isFullscreen ? "48px" : "32px", width: "auto", borderRadius: "4px" }}
+          data-testid="video-logo"
+        />
+
+        {showBigPlay && !isPlaying && (
+          <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+            <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center">
+              <Play className="w-8 h-8 md:w-10 md:h-10 text-white fill-white ml-1" />
+            </div>
+          </div>
         )}
+
         {subsOn && currentSub && (
           <div
-            className="absolute bottom-12 left-1/2 -translate-x-1/2 z-10 max-w-[90%] text-center pointer-events-none"
+            className="absolute left-1/2 -translate-x-1/2 z-20 max-w-[90%] text-center pointer-events-none"
+            style={{ bottom: showControls ? "72px" : "24px", transition: "bottom 0.3s ease" }}
             data-testid="subtitle-display"
           >
-            <span className="bg-black/80 text-white px-3 py-1.5 rounded text-sm md:text-base leading-relaxed inline-block whitespace-pre-wrap">
+            <span
+              className="px-4 py-2 rounded-md text-base md:text-lg leading-relaxed inline-block whitespace-pre-wrap"
+              style={{
+                background: "rgba(0,0,0,0.85)",
+                color: "#fff",
+                fontFamily: isMyanmarText(currentSub) ? "'Pyidaungsu', 'Noto Sans Myanmar', sans-serif" : "inherit",
+                textShadow: "0 1px 4px rgba(0,0,0,0.8)",
+                letterSpacing: "0.02em",
+              }}
+            >
               {currentSub}
             </span>
           </div>
         )}
+
+        <div
+          data-controls
+          className="absolute bottom-0 left-0 right-0 z-30 transition-opacity duration-300"
+          style={{ opacity: showControls ? 1 : 0, pointerEvents: showControls ? "auto" : "none" }}
+        >
+          <div className="bg-gradient-to-t from-black/90 via-black/50 to-transparent pt-16 pb-3 px-3 md:px-5">
+            <div
+              ref={progressRef}
+              className="group/progress relative h-1 hover:h-2 transition-all cursor-pointer mb-3 rounded-full bg-white/20"
+              onClick={handleProgressClick}
+              onMouseDown={(e) => {
+                setIsSeeking(true);
+                handleProgressClick(e);
+                const onMove = (me: MouseEvent) => {
+                  if (!progressRef.current || !videoRef.current) return;
+                  const rect = progressRef.current.getBoundingClientRect();
+                  const pct = Math.max(0, Math.min(1, (me.clientX - rect.left) / rect.width));
+                  videoRef.current.currentTime = pct * duration;
+                  setCurrentTime(pct * duration);
+                };
+                const onUp = () => {
+                  setIsSeeking(false);
+                  document.removeEventListener("mousemove", onMove);
+                  document.removeEventListener("mouseup", onUp);
+                };
+                document.addEventListener("mousemove", onMove);
+                document.addEventListener("mouseup", onUp);
+              }}
+              data-testid="progress-bar"
+            >
+              <div
+                className="absolute top-0 left-0 h-full rounded-full bg-white/30"
+                style={{ width: duration ? `${(buffered / duration) * 100}%` : "0%" }}
+              />
+              <div
+                className="absolute top-0 left-0 h-full rounded-full bg-red-500"
+                style={{ width: duration ? `${(currentTime / duration) * 100}%` : "0%" }}
+              >
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-red-500 opacity-0 group-hover/progress:opacity-100 transition-opacity shadow-md" />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 md:gap-3">
+              <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="text-white hover:text-white/80 transition-colors" data-testid="button-play-pause">
+                {isPlaying ? <Pause className="w-5 h-5 md:w-6 md:h-6 fill-white" /> : <Play className="w-5 h-5 md:w-6 md:h-6 fill-white ml-0.5" />}
+              </button>
+
+              <button onClick={(e) => { e.stopPropagation(); skip(-10); }} className="text-white/80 hover:text-white text-xs font-bold hidden md:block" data-testid="button-rewind">
+                -10s
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); skip(10); }} className="text-white/80 hover:text-white text-xs font-bold hidden md:block" data-testid="button-forward">
+                +10s
+              </button>
+
+              <div className="flex items-center gap-1 group/vol">
+                <button onClick={(e) => {
+                  e.stopPropagation();
+                  if (videoRef.current) { videoRef.current.muted = !videoRef.current.muted; }
+                }} className="text-white hover:text-white/80" data-testid="button-mute">
+                  {isMuted || volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                </button>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={isMuted ? 0 : volume}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    const v = parseFloat(e.target.value);
+                    if (videoRef.current) { videoRef.current.volume = v; videoRef.current.muted = v === 0; }
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-0 group-hover/vol:w-16 transition-all accent-red-500 h-1 cursor-pointer opacity-0 group-hover/vol:opacity-100"
+                  data-testid="volume-slider"
+                />
+              </div>
+
+              <span className="text-white/80 text-xs md:text-sm tabular-nums" data-testid="time-display">
+                {formatTime(currentTime)} / {formatTime(duration)}
+              </span>
+
+              <div className="flex-1" />
+
+              {srtLoaded && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setSubsOn(!subsOn); }}
+                  className={`text-xs font-bold px-2 py-0.5 rounded transition-colors ${subsOn ? "bg-red-500 text-white" : "bg-white/20 text-white/60"}`}
+                  data-testid="button-subtitle-toggle"
+                >
+                  CC
+                </button>
+              )}
+
+              <button onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} className="text-white hover:text-white/80" data-testid="button-fullscreen">
+                {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -136,6 +365,13 @@ function VideoPlayer({ embedUrl, videoLink, srtLink }: { embedUrl: string; video
           allowFullScreen
           data-testid="video-iframe"
         />
+        <img
+          src={logoImg}
+          alt="Series Plus"
+          className="absolute top-3 right-3 z-30 pointer-events-none opacity-70"
+          style={{ height: "32px", width: "auto", borderRadius: "4px" }}
+          data-testid="video-logo"
+        />
       </div>
     );
   }
@@ -149,6 +385,13 @@ function VideoPlayer({ embedUrl, videoLink, srtLink }: { embedUrl: string; video
         allowFullScreen
         onError={() => setIframeError(true)}
         data-testid="video-iframe"
+      />
+      <img
+        src={logoImg}
+        alt="Series Plus"
+        className="absolute top-3 right-3 z-30 pointer-events-none opacity-70"
+        style={{ height: "32px", width: "auto", borderRadius: "4px" }}
+        data-testid="video-logo"
       />
       {iframeError && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/80 text-white text-center p-6">
@@ -235,73 +478,21 @@ function DownloadButton({ videoLink, epId, epTitle }: { videoLink: string; epId:
 function VideoContainer({ embedUrl, videoLink, srtLink }: { embedUrl: string; videoLink: string; srtLink?: string | null }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
 
   useEffect(() => {
-    const handleChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
+    const handleChange = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", handleChange);
     return () => document.removeEventListener("fullscreenchange", handleChange);
-  }, []);
-
-  const toggleFullscreen = useCallback(async () => {
-    try {
-      if (!document.fullscreenElement) {
-        await containerRef.current?.requestFullscreen();
-      } else {
-        await document.exitFullscreen();
-      }
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    const handleVisibility = () => {
-      if (document.visibilityState === "hidden" && containerRef.current) {
-        containerRef.current.style.filter = "brightness(0)";
-      } else if (containerRef.current) {
-        containerRef.current.style.filter = "";
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
-  }, []);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "PrintScreen") {
-        setIsRecording(true);
-        setTimeout(() => setIsRecording(false), 3000);
-      }
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   return (
     <div
       ref={containerRef}
-      className={`relative w-full bg-black group video-protected ${isFullscreen ? "h-screen" : "aspect-video max-h-[70vh]"}`}
+      className={`relative w-full bg-black ${isFullscreen ? "h-screen" : "aspect-video max-h-[80vh]"}`}
       data-testid="video-container"
       onContextMenu={(e) => e.preventDefault()}
     >
-      {isRecording && (
-        <div
-          className="absolute inset-0 z-50 bg-black flex items-center justify-center"
-          data-testid="recording-overlay"
-        >
-          <p className="text-white/60 text-sm">Screen recording is not allowed</p>
-        </div>
-      )}
-      <VideoPlayer embedUrl={embedUrl} videoLink={videoLink} srtLink={srtLink} />
-      <button
-        onClick={toggleFullscreen}
-        className="absolute bottom-3 right-3 z-10 w-9 h-9 rounded-md bg-black/60 backdrop-blur-sm flex items-center justify-center text-white/80 opacity-0 group-hover:opacity-100 transition-opacity"
-        style={{ visibility: "visible" }}
-        data-testid="button-fullscreen"
-      >
-        {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
-      </button>
+      <VideoPlayer embedUrl={embedUrl} videoLink={videoLink} srtLink={srtLink} containerRef={containerRef} />
     </div>
   );
 }
