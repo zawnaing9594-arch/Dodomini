@@ -115,9 +115,13 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
   }, [srtCues]);
 
   useEffect(() => {
-    const handleFS = () => setIsFullscreen(!!document.fullscreenElement);
+    const handleFS = () => setIsFullscreen(!!(document.fullscreenElement || (document as any).webkitFullscreenElement));
     document.addEventListener("fullscreenchange", handleFS);
-    return () => document.removeEventListener("fullscreenchange", handleFS);
+    document.addEventListener("webkitfullscreenchange", handleFS);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFS);
+      document.removeEventListener("webkitfullscreenchange", handleFS);
+    };
   }, []);
 
   const showControlsTemporarily = useCallback(() => {
@@ -136,10 +140,16 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
 
   const toggleFullscreen = useCallback(async () => {
     try {
-      if (!document.fullscreenElement) {
-        await containerRef.current?.requestFullscreen();
+      const el = containerRef.current as any;
+      if (!el) return;
+      const isFS = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
+      if (!isFS) {
+        if (el.requestFullscreen) await el.requestFullscreen();
+        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+        else if (el.webkitEnterFullscreen) el.webkitEnterFullscreen();
       } else {
-        await document.exitFullscreen();
+        if (document.exitFullscreen) await document.exitFullscreen();
+        else if ((document as any).webkitExitFullscreen) (document as any).webkitExitFullscreen();
       }
     } catch {}
   }, [containerRef]);
@@ -402,9 +412,9 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
     return () => { if (embedSubTimerRef.current) clearInterval(embedSubTimerRef.current); };
   }, [embedSubStarted, srtCues]);
 
-  const embedSubControls = srtLoaded && (
+  const embedSubControls = (
     <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2" data-testid="embed-sub-controls">
-      {!embedSubStarted ? (
+      {srtLoaded && !embedSubStarted && (
         <button
           onClick={() => { setEmbedSubStarted(true); setEmbedSubTime(0); }}
           className="flex items-center gap-1.5 bg-black/80 hover:bg-black/90 text-white text-xs font-medium px-3 py-1.5 rounded-full backdrop-blur-sm transition-colors"
@@ -413,7 +423,8 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
           <Subtitles className="w-3.5 h-3.5" />
           Start Subtitle
         </button>
-      ) : (
+      )}
+      {srtLoaded && embedSubStarted && (
         <>
           <button
             onClick={() => { setSubsOn(!subsOn); }}
@@ -439,13 +450,20 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
           </button>
         </>
       )}
+      <button
+        onClick={toggleFullscreen}
+        className="bg-black/80 hover:bg-black/90 text-white p-1.5 rounded-full backdrop-blur-sm transition-colors"
+        data-testid="button-embed-fullscreen"
+      >
+        {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+      </button>
     </div>
   );
 
   const embedSubDisplay = subsOn && currentSub && embedSubStarted && (
     <div
       className="absolute left-1/2 -translate-x-1/2 z-30 text-center pointer-events-none px-2"
-      style={{ bottom: srtLoaded ? "48px" : "16px", maxWidth: "90%" }}
+      style={{ bottom: "48px", maxWidth: "90%" }}
       data-testid="embed-subtitle-display"
     >
       <span
@@ -456,9 +474,9 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
           fontFamily: isMyanmarText(currentSub) ? "'Pyidaungsu', 'Noto Sans Myanmar', sans-serif" : "inherit",
           textShadow: "0 1px 4px rgba(0,0,0,0.8)",
           letterSpacing: "0.02em",
-          padding: "4px 12px",
+          padding: isFullscreen ? "8px 20px" : "4px 12px",
           borderRadius: "6px",
-          fontSize: "0.875rem",
+          fontSize: isFullscreen ? "1.25rem" : "0.875rem",
         }}
       >
         {currentSub}
@@ -477,7 +495,7 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
           data-testid="video-iframe"
         />
         <div className="absolute top-0 left-0 right-0 z-30 flex items-center gap-2 p-3 pointer-events-none" style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 100%)", paddingBottom: "30px" }}>
-          <img src={logoImg} alt="Series Plus" style={{ height: "44px", width: "auto", borderRadius: "6px" }} data-testid="video-logo" />
+          <img src={logoImg} alt="Series Plus" style={{ height: isFullscreen ? "56px" : "44px", width: "auto", borderRadius: "6px" }} data-testid="video-logo" />
           {(epTitle || seriesTitle) && (
             <div className="min-w-0">
               {seriesTitle && <p className="text-white/70 text-xs truncate">{seriesTitle}</p>}
@@ -502,7 +520,7 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
         data-testid="video-iframe"
       />
       <div className="absolute top-0 left-0 right-0 z-30 flex items-center gap-2 p-3 pointer-events-none" style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 100%)", paddingBottom: "30px" }}>
-        <img src={logoImg} alt="Series Plus" style={{ height: "44px", width: "auto", borderRadius: "6px" }} data-testid="video-logo" />
+        <img src={logoImg} alt="Series Plus" style={{ height: isFullscreen ? "56px" : "44px", width: "auto", borderRadius: "6px" }} data-testid="video-logo" />
         {(epTitle || seriesTitle) && (
           <div className="min-w-0">
             {seriesTitle && <p className="text-white/70 text-xs truncate">{seriesTitle}</p>}
@@ -599,9 +617,13 @@ function VideoContainer({ embedUrl, videoLink, srtLink, epTitle, seriesTitle }: 
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
-    const handleChange = () => setIsFullscreen(!!document.fullscreenElement);
+    const handleChange = () => setIsFullscreen(!!(document.fullscreenElement || (document as any).webkitFullscreenElement));
     document.addEventListener("fullscreenchange", handleChange);
-    return () => document.removeEventListener("fullscreenchange", handleChange);
+    document.addEventListener("webkitfullscreenchange", handleChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleChange);
+      document.removeEventListener("webkitfullscreenchange", handleChange);
+    };
   }, []);
 
   return (
