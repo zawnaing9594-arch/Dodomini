@@ -6,5 +6,9 @@ export function toSlug(text: string): string {
 }
 
 export function getShareUrl(epId: number, _seriesTitle?: string, _epTitle?: string): string {
-  return `/e/${epId}`;
+  return `/watch/${epId}`;
+}
+
+export function getShareLink(contentId: number, episodeNumber: number): string {
+  return `/s/${contentId}/${episodeNumber}`;
 }

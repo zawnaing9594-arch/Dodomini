@@ -10,14 +10,14 @@ import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { getShareUrl } from "@/lib/slugs";
+import { getShareUrl, getShareLink } from "@/lib/slugs";
 
-function ShareButton({ epId, title, seriesTitle, epTitle }: { epId: number; title: string; seriesTitle: string; epTitle: string }) {
+function ShareButton({ contentId, episodeNumber, title }: { contentId: number; episodeNumber: number; title: string }) {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
 
   const handleShare = useCallback(async () => {
-    const url = `${window.location.origin}${getShareUrl(epId, seriesTitle, epTitle)}`;
+    const url = `${window.location.origin}${getShareLink(contentId, episodeNumber)}`;
 
     if (navigator.share) {
       try {
@@ -34,7 +34,7 @@ function ShareButton({ epId, title, seriesTitle, epTitle }: { epId: number; titl
     } catch {
       toast({ title: "Could not copy link", variant: "destructive" });
     }
-  }, [epId, title, seriesTitle, epTitle, toast]);
+  }, [contentId, episodeNumber, title, toast]);
 
   return (
     <Button
@@ -450,7 +450,7 @@ export default function Watch() {
           </div>
           <div className="flex items-center gap-1">
             <DownloadButton videoLink={episode.videoLink} epId={episode.epId} epTitle={episode.epTitle} contentTitle={parent.title} poster={parent.poster} />
-            <ShareButton epId={episode.epId} title={`${parent.title} - ${episode.epTitle}`} seriesTitle={parent.title} epTitle={episode.epTitle} />
+            <ShareButton contentId={parent.id} episodeNumber={currentEpIndex + 1} title={`${parent.title} - ${episode.epTitle}`} />
             {prevEp && (
               <Link href={getShareUrl(prevEp.epId, parent.title, prevEp.epTitle)}>
                 <Button size="icon" variant="ghost" data-testid="button-prev-ep">

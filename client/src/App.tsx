@@ -1,6 +1,6 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useParams, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
@@ -11,6 +11,33 @@ import WatchSlug from "@/pages/watch-slug";
 import Downloads from "@/pages/downloads";
 import Admin from "@/pages/admin";
 import { useEffect } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function EpisodeByNumber() {
+  const { contentId, epNum } = useParams<{ contentId: string; epNum: string }>();
+  const [, setLocation] = useLocation();
+  const { data, isLoading, isError } = useQuery<{ epId: number }>({
+    queryKey: ["/api/episode-by-number", contentId, epNum],
+    queryFn: async () => {
+      const res = await fetch(`/api/episode-by-number/${contentId}/${epNum}`);
+      if (!res.ok) throw new Error("Not found");
+      return res.json();
+    },
+  });
+
+  useEffect(() => {
+    if (data?.epId) {
+      setLocation(`/watch/${data.epId}`, { replace: true });
+    }
+  }, [data, setLocation]);
+
+  if (isError) return <NotFound />;
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <Skeleton className="w-16 h-16 rounded-full" />
+    </div>
+  );
+}
 
 function Router() {
   return (
@@ -19,6 +46,7 @@ function Router() {
       <Route path="/series/:id" component={SeriesDetail} />
       <Route path="/watch/:epId" component={Watch} />
       <Route path="/e/:epId" component={Watch} />
+      <Route path="/s/:contentId/:epNum" component={EpisodeByNumber} />
       <Route path="/downloads" component={Downloads} />
       <Route path="/admin" component={Admin} />
       <Route path="/:seriesSlug/:epSlug" component={WatchSlug} />

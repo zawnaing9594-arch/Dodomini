@@ -453,6 +453,39 @@ export async function registerRoutes(
 </html>`;
   }
 
+  app.get("/api/episode-by-number/:contentId/:epNum", async (req, res) => {
+    const contentId = parseInt(req.params.contentId);
+    const epNum = parseInt(req.params.epNum);
+    if (isNaN(contentId) || isNaN(epNum) || epNum < 1) return res.status(400).json({ error: "Invalid parameters" });
+
+    const allEpisodes = await storage.getEpisodesByContentId(contentId);
+    if (epNum > allEpisodes.length) return res.status(404).json({ error: "Episode not found" });
+
+    const episode = allEpisodes[epNum - 1];
+    if (!episode) return res.status(404).json({ error: "Episode not found" });
+
+    res.json({ epId: episode.epId });
+  });
+
+  app.get("/s/:contentId/:epNum", async (req, res, next) => {
+    if (!isSocialBot(req.headers["user-agent"] || "")) return next();
+    const contentId = parseInt(req.params.contentId);
+    const epNum = parseInt(req.params.epNum);
+    if (isNaN(contentId) || isNaN(epNum)) return next();
+    try {
+      const parent = await storage.getContentById(contentId);
+      if (!parent) return next();
+      const allEpisodes = await storage.getEpisodesByContentId(contentId);
+      const episode = allEpisodes[epNum - 1];
+      if (!episode) return next();
+      const title = `${parent.title} - ${episode.epTitle} | Series Myanmar`;
+      const desc = `${parent.title} - ${episode.epTitle} ကို Series Myanmar မှာ ကြည့်ရှုပါ`;
+      const baseUrl = `${req.protocol}://${req.get("host")}`;
+      const image = parent.poster?.startsWith("http") ? parent.poster : (parent.poster ? `${baseUrl}${parent.poster}` : "");
+      res.send(renderOgHtml(title, desc, `${baseUrl}/s/${contentId}/${epNum}`, "video.episode", image));
+    } catch { next(); }
+  });
+
   app.get("/e/:epId", async (req, res, next) => {
     if (!isSocialBot(req.headers["user-agent"] || "")) return next();
     const epId = parseInt(req.params.epId);
