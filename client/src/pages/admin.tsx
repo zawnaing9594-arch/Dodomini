@@ -689,7 +689,7 @@ function EditEpisodeDialog({ ep, contentId }: { ep: Episode; contentId: number }
             </div>
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">SRT Subtitle File (optional)</label>
+            <label className="text-sm font-medium">Subtitle File - SRT/VTT/ASS (optional)</label>
             <div className="flex items-center gap-2">
               {srtLink ? (
                 <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -705,7 +705,7 @@ function EditEpisodeDialog({ ep, contentId }: { ep: Episode; contentId: number }
               <label className="cursor-pointer">
                 <input
                   type="file"
-                  accept=".srt"
+                  accept=".srt,.vtt,.ass,.ssa"
                   className="hidden"
                   data-testid={`input-edit-ep-srt-${ep.epId}`}
                   onChange={async (e) => {
@@ -722,7 +722,7 @@ function EditEpisodeDialog({ ep, contentId }: { ep: Episode; contentId: number }
                       const uploadRes = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": "text/plain" } });
                       if (!uploadRes.ok) throw new Error("Upload failed");
                       setSrtLink(objectPath);
-                      toast({ title: "SRT file uploaded" });
+                      toast({ title: "Subtitle file uploaded" });
                     } catch {
                       toast({ title: "Upload failed", variant: "destructive" });
                     }
@@ -730,7 +730,7 @@ function EditEpisodeDialog({ ep, contentId }: { ep: Episode; contentId: number }
                   }}
                 />
                 <Button size="sm" variant="outline" asChild>
-                  <span><Upload className="w-3 h-3 mr-1" />Upload .srt</span>
+                  <span><Upload className="w-3 h-3 mr-1" />Upload Sub</span>
                 </Button>
               </label>
             </div>

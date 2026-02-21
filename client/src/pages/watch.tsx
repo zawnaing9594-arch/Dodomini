@@ -11,7 +11,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { getShareUrl, getShareLink } from "@/lib/slugs";
-import logoImg from "@assets/IMG_9941_1771683117938.jpeg";
+import logoImg from "@assets/2EC8CD7B-0E04-4AE7-AF83-C248B0735C64_1771684313948.png";
 
 function ShareButton({ contentId, episodeNumber, title }: { contentId: number; episodeNumber: number; title: string }) {
   const { toast } = useToast();
