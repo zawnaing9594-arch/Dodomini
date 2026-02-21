@@ -363,16 +363,6 @@ function getEmbedUrl(rawLink: string): string {
     }
   }
 
-  if (rawLink.includes("res.cloudinary.com") && rawLink.includes("/video/upload/")) {
-    const match = rawLink.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.\w+)?$/);
-    const cloudMatch = rawLink.match(/res\.cloudinary\.com\/([^/]+)\//);
-    if (match && cloudMatch) {
-      const publicId = match[1];
-      const cloudName = cloudMatch[1];
-      return `https://player.cloudinary.com/embed/?cloud_name=${cloudName}&public_id=${publicId}&fluid=true&controls=true&source_types%5B0%5D=mp4`;
-    }
-  }
-
   return rawLink;
 }
 
