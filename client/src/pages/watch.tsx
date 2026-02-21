@@ -115,14 +115,18 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
   }, [srtCues]);
 
   useEffect(() => {
-    const handleFS = () => setIsFullscreen(!!(document.fullscreenElement || (document as any).webkitFullscreenElement));
+    const handleFS = () => {
+      const nativeFS = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
+      const cssFS = containerRef.current?.classList.contains("css-fullscreen") || false;
+      setIsFullscreen(nativeFS || cssFS);
+    };
     document.addEventListener("fullscreenchange", handleFS);
     document.addEventListener("webkitfullscreenchange", handleFS);
     return () => {
       document.removeEventListener("fullscreenchange", handleFS);
       document.removeEventListener("webkitfullscreenchange", handleFS);
     };
-  }, []);
+  }, [containerRef]);
 
   const showControlsTemporarily = useCallback(() => {
     setShowControls(true);
@@ -139,19 +143,35 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
   }, []);
 
   const toggleFullscreen = useCallback(async () => {
-    try {
-      const el = containerRef.current as any;
-      if (!el) return;
-      const isFS = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
-      if (!isFS) {
-        if (el.requestFullscreen) await el.requestFullscreen();
-        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-        else if (el.webkitEnterFullscreen) el.webkitEnterFullscreen();
-      } else {
-        if (document.exitFullscreen) await document.exitFullscreen();
-        else if ((document as any).webkitExitFullscreen) (document as any).webkitExitFullscreen();
-      }
-    } catch {}
+    const el = containerRef.current as any;
+    if (!el) return;
+    const isFS = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
+    if (!isFS) {
+      try {
+        if (el.requestFullscreen) { await el.requestFullscreen(); return; }
+        if (el.webkitRequestFullscreen) { el.webkitRequestFullscreen(); return; }
+      } catch {}
+      el.classList.add("css-fullscreen");
+      document.body.style.overflow = "hidden";
+      setIsFullscreen(true);
+      const handleEsc = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          el.classList.remove("css-fullscreen");
+          document.body.style.overflow = "";
+          setIsFullscreen(false);
+          document.removeEventListener("keydown", handleEsc);
+        }
+      };
+      document.addEventListener("keydown", handleEsc);
+    } else {
+      try {
+        if (document.exitFullscreen) { await document.exitFullscreen(); return; }
+        if ((document as any).webkitExitFullscreen) { (document as any).webkitExitFullscreen(); return; }
+      } catch {}
+      el.classList.remove("css-fullscreen");
+      document.body.style.overflow = "";
+      setIsFullscreen(false);
+    }
   }, [containerRef]);
 
   const handleProgressClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -223,32 +243,30 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
         />
 
         <div
-          className="absolute top-0 left-0 right-0 z-30 flex items-start justify-between p-3 md:p-4 transition-opacity duration-300 pointer-events-none"
+          className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between p-3 md:p-4 transition-opacity duration-300 pointer-events-none"
           style={{
             opacity: showControls ? 1 : 0,
             background: "linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%)",
             paddingBottom: "40px",
           }}
         >
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <img
-              src={logoImg}
-              alt="Series Plus"
-              className="shrink-0"
-              style={{ height: isFullscreen ? "56px" : "44px", width: "auto", borderRadius: "6px" }}
-              data-testid="video-logo"
-            />
-            {(epTitle || seriesTitle) && (
-              <div className="min-w-0">
-                {seriesTitle && (
-                  <p className="text-white/70 text-xs md:text-sm truncate" data-testid="video-series-title">{seriesTitle}</p>
-                )}
-                {epTitle && (
-                  <p className="text-white font-medium text-sm md:text-base truncate" data-testid="video-ep-title">{epTitle}</p>
-                )}
-              </div>
-            )}
-          </div>
+          {(epTitle || seriesTitle) && (
+            <div className="min-w-0 flex-1">
+              {seriesTitle && (
+                <p className="text-white/70 text-xs md:text-sm truncate" data-testid="video-series-title">{seriesTitle}</p>
+              )}
+              {epTitle && (
+                <p className="text-white font-medium text-sm md:text-base truncate" data-testid="video-ep-title">{epTitle}</p>
+              )}
+            </div>
+          )}
+          <img
+            src={logoImg}
+            alt="Series Plus"
+            className="shrink-0 ml-2"
+            style={{ height: isFullscreen ? "56px" : "44px", width: "auto", borderRadius: "6px" }}
+            data-testid="video-logo"
+          />
         </div>
 
         {showBigPlay && !isPlaying && (
@@ -494,14 +512,14 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
           allowFullScreen
           data-testid="video-iframe"
         />
-        <div className="absolute top-0 left-0 right-0 z-30 flex items-center gap-2 p-3 pointer-events-none" style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 100%)", paddingBottom: "30px" }}>
-          <img src={logoImg} alt="Series Plus" style={{ height: isFullscreen ? "56px" : "44px", width: "auto", borderRadius: "6px" }} data-testid="video-logo" />
+        <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between p-3 pointer-events-none" style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 100%)", paddingBottom: "30px" }}>
           {(epTitle || seriesTitle) && (
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               {seriesTitle && <p className="text-white/70 text-xs truncate">{seriesTitle}</p>}
               {epTitle && <p className="text-white font-medium text-sm truncate">{epTitle}</p>}
             </div>
           )}
+          <img src={logoImg} alt="Series Plus" className="shrink-0 ml-2" style={{ height: isFullscreen ? "56px" : "44px", width: "auto", borderRadius: "6px" }} data-testid="video-logo" />
         </div>
         {embedSubDisplay}
         {embedSubControls}
@@ -519,14 +537,14 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
         onError={() => setIframeError(true)}
         data-testid="video-iframe"
       />
-      <div className="absolute top-0 left-0 right-0 z-30 flex items-center gap-2 p-3 pointer-events-none" style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 100%)", paddingBottom: "30px" }}>
-        <img src={logoImg} alt="Series Plus" style={{ height: isFullscreen ? "56px" : "44px", width: "auto", borderRadius: "6px" }} data-testid="video-logo" />
+      <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between p-3 pointer-events-none" style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 100%)", paddingBottom: "30px" }}>
         {(epTitle || seriesTitle) && (
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             {seriesTitle && <p className="text-white/70 text-xs truncate">{seriesTitle}</p>}
             {epTitle && <p className="text-white font-medium text-sm truncate">{epTitle}</p>}
           </div>
         )}
+        <img src={logoImg} alt="Series Plus" className="shrink-0 ml-2" style={{ height: isFullscreen ? "56px" : "44px", width: "auto", borderRadius: "6px" }} data-testid="video-logo" />
       </div>
       {embedSubDisplay}
       {embedSubControls}
@@ -617,7 +635,11 @@ function VideoContainer({ embedUrl, videoLink, srtLink, epTitle, seriesTitle }: 
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
-    const handleChange = () => setIsFullscreen(!!(document.fullscreenElement || (document as any).webkitFullscreenElement));
+    const handleChange = () => {
+      const nativeFS = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
+      const cssFS = containerRef.current?.classList.contains("css-fullscreen") || false;
+      setIsFullscreen(nativeFS || cssFS);
+    };
     document.addEventListener("fullscreenchange", handleChange);
     document.addEventListener("webkitfullscreenchange", handleChange);
     return () => {
