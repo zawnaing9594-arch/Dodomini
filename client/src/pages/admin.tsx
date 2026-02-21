@@ -496,11 +496,15 @@ function AddEpisodeInline({ contentId }: { contentId: number }) {
           data-testid={`input-ep-title-${contentId}`}
         />
         <Input
-          placeholder="Video link"
+          placeholder="Video link or upload"
           value={link}
           onChange={(e) => setLink(e.target.value)}
           className="flex-1 min-w-[120px]"
           data-testid={`input-ep-link-${contentId}`}
+        />
+        <VideoUploadButton
+          onUploaded={(url) => setLink(url)}
+          testId={`button-upload-video-add-${contentId}`}
         />
         <Button
           size="sm"
@@ -531,6 +535,64 @@ function AddEpisodeInline({ contentId }: { contentId: number }) {
         )}
       </div>
     </div>
+  );
+}
+
+function VideoUploadButton({ onUploaded, testId }: { onUploaded: (url: string) => void; testId: string }) {
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  const handleUpload = useCallback(async (file: File) => {
+    const maxSize = 50 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast({ title: "File too large", description: "Maximum 50MB allowed", variant: "destructive" });
+      return;
+    }
+    setUploading(true);
+    try {
+      const metaRes = await fetch("/api/uploads/request-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+      });
+      if (!metaRes.ok) throw new Error("Failed to get upload URL");
+      const { uploadURL, objectPath } = await metaRes.json();
+      const uploadRes = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+      if (!uploadRes.ok) throw new Error("Upload failed");
+      onUploaded(objectPath);
+      toast({ title: "Video uploaded" });
+    } catch {
+      toast({ title: "Upload failed", variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  }, [onUploaded, toast]);
+
+  return (
+    <>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="video/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleUpload(file);
+          e.target.value = "";
+        }}
+      />
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => fileRef.current?.click()}
+        disabled={uploading}
+        data-testid={testId}
+      >
+        {uploading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Upload className="w-3 h-3 mr-1" />}
+        {uploading ? "Uploading..." : "Upload"}
+      </Button>
+    </>
   );
 }
 
@@ -611,13 +673,20 @@ function EditEpisodeDialog({ ep, contentId }: { ep: Episode; contentId: number }
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">Video Link</label>
-            <Input
-              value={videoLink}
-              onChange={(e) => setVideoLink(e.target.value)}
-              placeholder="Video link"
-              data-testid={`input-edit-ep-link-${ep.epId}`}
-            />
+            <label className="text-sm font-medium">Video Link / Upload</label>
+            <div className="flex gap-2 items-center">
+              <Input
+                value={videoLink}
+                onChange={(e) => setVideoLink(e.target.value)}
+                placeholder="Paste link or upload video"
+                className="flex-1"
+                data-testid={`input-edit-ep-link-${ep.epId}`}
+              />
+              <VideoUploadButton
+                onUploaded={(url) => setVideoLink(url)}
+                testId={`button-upload-video-${ep.epId}`}
+              />
+            </div>
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">SRT Subtitle File (optional)</label>
