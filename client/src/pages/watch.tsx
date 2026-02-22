@@ -56,11 +56,15 @@ function getDropboxStreamUrl(url: string): string | null {
 }
 
 function getCloudinaryStreamUrl(url: string): string | null {
-  if (url.includes("player.cloudinary.com/embed")) {
+  if (url.includes("player.cloudinary.com/embed") || url.includes("player.cloudinary.com/?")) {
     try {
       const u = new URL(url);
       const cloudName = u.searchParams.get("cloud_name");
       const publicId = u.searchParams.get("public_id");
+      const sourceUrl = u.searchParams.get("source_url");
+      if (sourceUrl) {
+        return `/api/video-stream?url=${encodeURIComponent(sourceUrl)}`;
+      }
       if (cloudName && publicId) {
         const format = u.searchParams.get("format") || "mp4";
         const hasExt = /\.\w{2,5}$/.test(publicId);
@@ -70,8 +74,10 @@ function getCloudinaryStreamUrl(url: string): string | null {
     } catch {}
     return null;
   }
-  if (!url.includes("res.cloudinary.com")) return null;
-  return `/api/video-stream?url=${encodeURIComponent(url)}`;
+  if (url.includes("res.cloudinary.com") && /\/video\/upload\//i.test(url)) {
+    return `/api/video-stream?url=${encodeURIComponent(url)}`;
+  }
+  return null;
 }
 
 function isJumpShareLink(url: string): boolean {
@@ -208,7 +214,7 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
     for (const cue of srtCues) {
       try {
         const vttCue = new VTTCue(cue.startTime, cue.endTime, cue.text);
-        vttCue.line = -4;
+        vttCue.line = -3;
         track.addCue(vttCue);
       } catch {}
     }
@@ -442,8 +448,8 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
         <div
           className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between p-3 md:p-4 pointer-events-none"
           style={{
-            background: "linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, transparent 100%)",
-            paddingBottom: "40px",
+            background: "linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 50%, transparent 100%)",
+            paddingBottom: "48px",
           }}
         >
           {(epTitle || seriesTitle) && (
@@ -477,7 +483,7 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
           <div
             className="absolute left-1/2 -translate-x-1/2 z-20 text-center pointer-events-none px-2"
             style={{
-              bottom: showControls ? (isFullscreen ? "120px" : "64px") : (isFullscreen ? "80px" : "20px"),
+              bottom: showControls ? (isFullscreen ? "90px" : "64px") : (isFullscreen ? "40px" : "20px"),
               transition: "bottom 0.3s ease",
               maxWidth: isFullscreen ? "80%" : "92%",
             }}
@@ -657,7 +663,7 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
   const embedSubDisplay = subsOn && currentSub && embedSubStarted && (
     <div
       className="absolute left-1/2 -translate-x-1/2 z-30 text-center pointer-events-none px-2"
-      style={{ bottom: isFullscreen ? "80px" : "48px", maxWidth: "90%" }}
+      style={{ bottom: isFullscreen ? "50px" : "48px", maxWidth: "90%" }}
       data-testid="embed-subtitle-display"
     >
       <span
