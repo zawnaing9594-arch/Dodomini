@@ -108,10 +108,12 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
   const [directVideoFailed, setDirectVideoFailed] = useState(false);
   const [autoDetectedDirect, setAutoDetectedDirect] = useState<string | null>(null);
   const hasKnownExtension = /\.(mp4|webm|m3u8|mov|avi|mkv)(\?.*)?$/i.test(videoLink);
-  const isKnownEmbed = videoLink.includes("youtube.com") || videoLink.includes("youtu.be") || videoLink.includes("vimeo.com") || videoLink.includes("facebook.com") || videoLink.includes("fb.watch") || videoLink.includes("dailymotion.com") || videoLink.includes("dai.ly") || videoLink.includes("t.me/") || videoLink.includes("telegram.") || videoLink.includes("dropbox.com") || videoLink.includes("player.cloudinary.com") || isJumpShare;
-  const rawIsDirectVideo = dropboxStreamUrl || cloudinaryStreamUrl || jumpShareResolvedUrl || autoDetectedDirect ? true : isObjectStorage || hasKnownExtension;
+  const isKnownEmbed = videoLink.includes("youtube.com") || videoLink.includes("youtu.be") || videoLink.includes("vimeo.com") || videoLink.includes("facebook.com") || videoLink.includes("fb.watch") || videoLink.includes("dailymotion.com") || videoLink.includes("dai.ly") || videoLink.includes("t.me/") || videoLink.includes("telegram.") || videoLink.includes("dropbox.com") || videoLink.includes("player.cloudinary.com") || videoLink.includes("cdn.jumpshare.com") || isJumpShare;
+  const needsProxy = videoLink.includes("cdn.jumpshare.com") || (videoLink.includes("res.cloudinary.com") && /\/video\/upload\//i.test(videoLink));
+  const proxiedSrc = needsProxy ? `/api/video-stream?url=${encodeURIComponent(videoLink)}` : null;
+  const rawIsDirectVideo = dropboxStreamUrl || cloudinaryStreamUrl || jumpShareResolvedUrl || autoDetectedDirect || proxiedSrc ? true : isObjectStorage || hasKnownExtension;
   const isDirectVideo = rawIsDirectVideo && !directVideoFailed;
-  const directSrc = dropboxStreamUrl || cloudinaryStreamUrl || jumpShareResolvedUrl || autoDetectedDirect || videoLink;
+  const directSrc = dropboxStreamUrl || cloudinaryStreamUrl || jumpShareResolvedUrl || autoDetectedDirect || proxiedSrc || videoLink;
   const isFacebook = videoLink.includes("facebook.com") || videoLink.includes("fb.watch") || videoLink.includes("fb.com");
   const isGoogleDrive = embedUrl.includes("drive.google.com");
   const [iframeError, setIframeError] = useState(false);
@@ -439,7 +441,7 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
             if (!videoReady) setVideoReady(true);
           }}
           onError={() => {
-            if (jumpShareResolvedUrl || dropboxStreamUrl || cloudinaryStreamUrl || autoDetectedDirect || (embedUrl && embedUrl !== videoLink)) {
+            if (jumpShareResolvedUrl || dropboxStreamUrl || cloudinaryStreamUrl || autoDetectedDirect || proxiedSrc || (embedUrl && embedUrl !== videoLink)) {
               setDirectVideoFailed(true);
             }
           }}
@@ -753,6 +755,8 @@ function DownloadButton({ videoLink, epId, epTitle }: { videoLink: string; epId:
   const isGoogleDrive = videoLink.includes("drive.google.com");
   const isDropbox = videoLink.includes("dropbox.com");
   const isJumpShare = isJumpShareLink(videoLink);
+  const isCdnJumpShare = videoLink.includes("cdn.jumpshare.com");
+  const isCdnCloudinary = videoLink.includes("res.cloudinary.com") && /\/video\/upload\//i.test(videoLink);
 
   const getDriveFileId = (url: string): string | null => {
     if (url.includes("/file/d/")) return url.split("/file/d/")[1].split("/")[0];
@@ -760,7 +764,7 @@ function DownloadButton({ videoLink, epId, epTitle }: { videoLink: string; epId:
     return null;
   };
 
-  const canDownload = isDirectVideo || isGoogleDrive || isDropbox || isJumpShare;
+  const canDownload = isDirectVideo || isGoogleDrive || isDropbox || isJumpShare || isCdnJumpShare || isCdnCloudinary;
 
   if (isLoading) return null;
 
@@ -793,6 +797,8 @@ function DownloadButton({ videoLink, epId, epTitle }: { videoLink: string; epId:
     } else if (isDropbox) {
       const rawUrl = videoLink.replace(/[?&]dl=[01]/, "").replace(/\?$/, "") + (videoLink.includes("?") ? "&raw=1" : "?raw=1");
       downloadUrl = `/api/video-proxy?url=${encodeURIComponent(rawUrl)}&filename=${encodeURIComponent(filename)}`;
+    } else if (isCdnJumpShare || isCdnCloudinary) {
+      downloadUrl = `/api/video-proxy?url=${encodeURIComponent(videoLink)}&filename=${encodeURIComponent(filename)}`;
     } else if (isJumpShare) {
       const resolveRes = await fetch(`/api/jumpshare-resolve?url=${encodeURIComponent(videoLink)}`);
       if (resolveRes.ok) {

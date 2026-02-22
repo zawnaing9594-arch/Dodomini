@@ -5,6 +5,66 @@ import { insertContentSchema, insertEpisodeSchema } from "@shared/schema";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 import webpush from "web-push";
 
+const jumpShareCache = new Map<string, { url: string; ts: number }>();
+const JUMPSHARE_CACHE_TTL = 3600000;
+
+async function resolveJumpShareUrl(url: string): Promise<string | null> {
+  const cacheKey = url.split("?")[0].split("#")[0];
+  const cached = jumpShareCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < JUMPSHARE_CACHE_TTL) return cached.url;
+  try {
+    let embedUrl: string;
+    if (url.includes("jumpshare.com/embed/")) {
+      embedUrl = url.split("?")[0].split("#")[0];
+    } else {
+      const shareId = url.split("/").pop()?.replace(/[+-]$/, "") || "";
+      embedUrl = `https://jumpshare.com/embed/${shareId}`;
+    }
+    const response = await fetch(embedUrl, {
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
+    });
+    if (!response.ok) return null;
+    const html = await response.text();
+    const cdnMatch = html.match(/src="(https:\/\/cdn\.jumpshare\.com\/preview\/[^"]+)"/);
+    if (cdnMatch && cdnMatch[1]) {
+      jumpShareCache.set(cacheKey, { url: cdnMatch[1], ts: Date.now() });
+      return cdnMatch[1];
+    }
+  } catch {}
+  return null;
+}
+
+function resolveCloudinaryUrl(url: string): string | null {
+  if (url.includes("player.cloudinary.com/embed") || url.includes("player.cloudinary.com/?")) {
+    try {
+      const u = new URL(url);
+      const cloudName = u.searchParams.get("cloud_name");
+      const publicId = u.searchParams.get("public_id");
+      const sourceUrl = u.searchParams.get("source_url");
+      if (sourceUrl) return sourceUrl;
+      if (cloudName && publicId) {
+        const format = u.searchParams.get("format") || "mp4";
+        const hasExt = /\.\w{2,5}$/.test(publicId);
+        return `https://res.cloudinary.com/${cloudName}/video/upload/${hasExt ? publicId : `${publicId}.${format}`}`;
+      }
+    } catch {}
+  }
+  return null;
+}
+
+async function autoResolveVideoLink(videoLink: string): Promise<string> {
+  if (videoLink.includes("player.cloudinary.com")) {
+    const resolved = resolveCloudinaryUrl(videoLink);
+    if (resolved) return resolved;
+  }
+  const isJumpShare = videoLink.includes("jumpshare.com/embed/") || videoLink.includes("jumpshare.com/s/") || videoLink.includes("jumpshare.com/v/") || videoLink.includes("jmp.sh/");
+  if (isJumpShare && !videoLink.includes("cdn.jumpshare.com")) {
+    const resolved = await resolveJumpShareUrl(videoLink);
+    if (resolved) return resolved;
+  }
+  return videoLink;
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -127,9 +187,10 @@ export async function registerRoutes(
   app.post("/api/episodes", async (req, res) => {
     const parsed = insertEpisodeSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+    const resolvedLink = await autoResolveVideoLink(parsed.data.videoLink);
     const existing = await storage.getEpisodesByContentId(parsed.data.contentId);
     const maxOrder = existing.length > 0 ? Math.max(...existing.map((e) => e.epOrder)) : -1;
-    const ep = await storage.createEpisode({ ...parsed.data, epOrder: maxOrder + 1 });
+    const ep = await storage.createEpisode({ ...parsed.data, videoLink: resolvedLink, epOrder: maxOrder + 1 });
     const parent = await storage.getContentById(ep.contentId);
     if (parent) {
       sendPushToAll(
@@ -146,7 +207,7 @@ export async function registerRoutes(
     if (!contentId || !bulkLinks) return res.status(400).json({ error: "Missing data" });
 
     const lines = (bulkLinks as string).trim().split("\n").filter(Boolean);
-    const toInsert = lines
+    const parsed = lines
       .filter((line: string) => line.includes(","))
       .map((line: string) => {
         const [title, ...linkParts] = line.split(",");
@@ -156,6 +217,13 @@ export async function registerRoutes(
           videoLink: linkParts.join(",").trim(),
         };
       });
+
+    const toInsert = await Promise.all(
+      parsed.map(async (item) => ({
+        ...item,
+        videoLink: await autoResolveVideoLink(item.videoLink),
+      }))
+    );
 
     const inserted = await storage.createEpisodesBulk(toInsert);
     const parent = await storage.getContentById(Number(contentId));
@@ -180,7 +248,7 @@ export async function registerRoutes(
     if (typeof isLocked === "boolean") updateData.isLocked = isLocked;
     if (typeof password === "string") updateData.password = password || null;
     if (typeof epTitle === "string" && epTitle.trim()) updateData.epTitle = epTitle.trim();
-    if (typeof videoLink === "string" && videoLink.trim()) updateData.videoLink = videoLink.trim();
+    if (typeof videoLink === "string" && videoLink.trim()) updateData.videoLink = await autoResolveVideoLink(videoLink.trim());
     if (typeof srtLink === "string") updateData.srtLink = srtLink.trim() || null;
     if (typeof contentId === "number") updateData.contentId = contentId;
     const ep = await storage.updateEpisode(epId, updateData);
@@ -340,21 +408,9 @@ export async function registerRoutes(
     const url = req.query.url as string;
     if (!url) return res.status(400).json({ error: "Missing url" });
     try {
-      let embedUrl: string;
-      if (url.includes("jumpshare.com/embed/")) {
-        embedUrl = url.split("?")[0].split("#")[0];
-      } else {
-        const shareId = url.split("/").pop()?.replace(/[+-]$/, "") || "";
-        embedUrl = `https://jumpshare.com/embed/${shareId}`;
-      }
-      const response = await fetch(embedUrl, {
-        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
-      });
-      if (!response.ok) return res.status(502).json({ error: "Failed to fetch embed page" });
-      const html = await response.text();
-      const cdnMatch = html.match(/src="(https:\/\/cdn\.jumpshare\.com\/preview\/[^"]+)"/);
-      if (cdnMatch && cdnMatch[1]) {
-        return res.json({ videoUrl: cdnMatch[1] });
+      const videoUrl = await resolveJumpShareUrl(url);
+      if (videoUrl) {
+        return res.json({ videoUrl });
       }
       return res.status(404).json({ error: "Video URL not found in embed page" });
     } catch {
