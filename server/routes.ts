@@ -57,7 +57,7 @@ async function autoResolveVideoLink(videoLink: string): Promise<string> {
     const resolved = resolveCloudinaryUrl(videoLink);
     if (resolved) return resolved;
   }
-  const isJumpShare = videoLink.includes("jumpshare.com/embed/") || videoLink.includes("jumpshare.com/s/") || videoLink.includes("jumpshare.com/v/") || videoLink.includes("jmp.sh/");
+  const isJumpShare = videoLink.includes("jumpshare.com/embed/") || videoLink.includes("jumpshare.com/s/") || videoLink.includes("jumpshare.com/v/") || videoLink.includes("jumpshare.com/share/") || videoLink.includes("jmp.sh/");
   if (isJumpShare && !videoLink.includes("cdn.jumpshare.com")) {
     const resolved = await resolveJumpShareUrl(videoLink);
     if (resolved) return resolved;

@@ -81,7 +81,7 @@ function getCloudinaryStreamUrl(url: string): string | null {
 }
 
 function isJumpShareLink(url: string): boolean {
-  return (url.includes("jumpshare.com/s/") || url.includes("jumpshare.com/v/") || url.includes("jmp.sh/")) && !url.includes("jumpshare.com/embed/");
+  return (url.includes("jumpshare.com/s/") || url.includes("jumpshare.com/v/") || url.includes("jumpshare.com/share/") || url.includes("jmp.sh/")) && !url.includes("jumpshare.com/embed/");
 }
 
 
