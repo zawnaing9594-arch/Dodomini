@@ -135,6 +135,7 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
   const [isSeeking, setIsSeeking] = useState(false);
   const [showBigPlay, setShowBigPlay] = useState(true);
   const [embedSubStarted, setEmbedSubStarted] = useState(false);
+  const [embedSubPaused, setEmbedSubPaused] = useState(false);
   const [embedSubTime, setEmbedSubTime] = useState(0);
   const embedSubTimerRef = useRef<ReturnType<typeof setInterval>>();
   const embedSubStartTimeRef = useRef(0);
@@ -395,14 +396,10 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
   }, [togglePlay, skip, toggleFullscreen]);
 
   useEffect(() => {
-    if (srtLoaded && srtCues.length && !isDirectVideo && !embedSubStarted) {
-      setEmbedSubStarted(true);
-      setEmbedSubTime(0);
+    if (!embedSubStarted || !srtCues.length || embedSubPaused) {
+      if (embedSubTimerRef.current) clearInterval(embedSubTimerRef.current);
+      return;
     }
-  }, [srtLoaded, srtCues, isDirectVideo, embedSubStarted]);
-
-  useEffect(() => {
-    if (!embedSubStarted || !srtCues.length) return;
     embedSubStartTimeRef.current = Date.now() - embedSubTime * 1000;
     embedSubTimerRef.current = setInterval(() => {
       const elapsed = (Date.now() - embedSubStartTimeRef.current) / 1000;
@@ -411,7 +408,7 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
       setCurrentSub(cue ? cue.text : "");
     }, 100);
     return () => { if (embedSubTimerRef.current) clearInterval(embedSubTimerRef.current); };
-  }, [embedSubStarted, srtCues]);
+  }, [embedSubStarted, srtCues, embedSubPaused]);
 
   if (jumpShareLoading) {
     return (
@@ -642,6 +639,15 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
 
   const embedSubControls = (
     <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2" data-testid="embed-sub-controls">
+      {srtLoaded && !embedSubStarted && (
+        <button
+          onClick={() => { setEmbedSubStarted(true); setEmbedSubPaused(false); setEmbedSubTime(0); }}
+          className="text-xs font-bold px-3 py-1.5 rounded bg-red-500 text-white hover:bg-red-600 transition-colors animate-pulse"
+          data-testid="button-start-cc"
+        >
+          ▶ Start CC
+        </button>
+      )}
       {srtLoaded && embedSubStarted && (
         <>
           <button
@@ -651,12 +657,20 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
           >
             CC
           </button>
+          <button
+            onClick={() => { setEmbedSubPaused(!embedSubPaused); }}
+            className={`text-xs px-2 py-1 rounded transition-colors ${embedSubPaused ? "bg-green-500 text-white" : "bg-yellow-600 text-white"}`}
+            data-testid="button-pause-cc"
+          >
+            {embedSubPaused ? "▶" : "⏸"}
+          </button>
           <span className="text-white/70 text-xs tabular-nums bg-black/60 px-2 py-1 rounded">
             {formatTime(embedSubTime)}
           </span>
           <button
             onClick={() => {
               setEmbedSubStarted(false);
+              setEmbedSubPaused(false);
               setEmbedSubTime(0);
               setCurrentSub("");
               if (embedSubTimerRef.current) clearInterval(embedSubTimerRef.current);
