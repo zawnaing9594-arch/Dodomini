@@ -65,12 +65,33 @@ async function autoResolveVideoLink(videoLink: string): Promise<string> {
   return videoLink;
 }
 
+async function autoResolveExistingEpisodes() {
+  try {
+    const { db } = await import("./db");
+    const { episodes } = await import("@shared/schema");
+    const { eq } = await import("drizzle-orm");
+    const allEps = await db.select({ epId: episodes.epId, videoLink: episodes.videoLink }).from(episodes);
+    for (const ep of allEps) {
+      if (!ep.videoLink) continue;
+      const resolved = await autoResolveVideoLink(ep.videoLink);
+      if (resolved !== ep.videoLink) {
+        await db.update(episodes).set({ videoLink: resolved }).where(eq(episodes.epId, ep.epId));
+        console.log(`Auto-resolved episode ${ep.epId}: ${ep.videoLink.substring(0, 60)}... → ${resolved.substring(0, 60)}...`);
+      }
+    }
+  } catch (e) {
+    console.error("Auto-resolve existing episodes failed:", e);
+  }
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
 
   registerObjectStorageRoutes(app);
+
+  setTimeout(() => autoResolveExistingEpisodes(), 5000);
 
   const vapidPublicKey = process.env.VAPID_PUBLIC_KEY || "";
   const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY || "";
