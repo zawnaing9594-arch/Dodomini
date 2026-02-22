@@ -376,6 +376,13 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
   }, [togglePlay, skip, toggleFullscreen]);
 
   useEffect(() => {
+    if (srtLoaded && srtCues.length && !isDirectVideo && !embedSubStarted) {
+      setEmbedSubStarted(true);
+      setEmbedSubTime(0);
+    }
+  }, [srtLoaded, srtCues, isDirectVideo, embedSubStarted]);
+
+  useEffect(() => {
     if (!embedSubStarted || !srtCues.length) return;
     embedSubStartTimeRef.current = Date.now() - embedSubTime * 1000;
     embedSubTimerRef.current = setInterval(() => {
@@ -616,16 +623,6 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
 
   const embedSubControls = (
     <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2" data-testid="embed-sub-controls">
-      {srtLoaded && !embedSubStarted && (
-        <button
-          onClick={() => { setEmbedSubStarted(true); setEmbedSubTime(0); }}
-          className="flex items-center gap-1.5 bg-black/80 hover:bg-black/90 text-white text-xs font-medium px-3 py-1.5 rounded-full backdrop-blur-sm transition-colors"
-          data-testid="button-start-subtitle"
-        >
-          <Subtitles className="w-3.5 h-3.5" />
-          Start Subtitle
-        </button>
-      )}
       {srtLoaded && embedSubStarted && (
         <>
           <button
