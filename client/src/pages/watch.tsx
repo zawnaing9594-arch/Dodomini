@@ -145,6 +145,25 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
   }, [directSrc]);
 
   useEffect(() => {
+    if (!videoReady || !videoRef.current || isPlaying) return;
+    const video = videoRef.current;
+    const tryAutoplay = async () => {
+      try {
+        await video.play();
+        setShowBigPlay(false);
+      } catch {
+        try {
+          video.muted = true;
+          setIsMuted(true);
+          await video.play();
+          setShowBigPlay(false);
+        } catch {}
+      }
+    };
+    tryAutoplay();
+  }, [videoReady]);
+
+  useEffect(() => {
     if (hasKnownExtension || isKnownEmbed || isObjectStorage || dropboxStreamUrl || cloudinaryStreamUrl) return;
     const isHttp = videoLink.startsWith("http://") || videoLink.startsWith("https://");
     if (!isHttp) return;
@@ -882,7 +901,7 @@ function VideoContainer({ embedUrl, videoLink, srtLink, epTitle, seriesTitle }: 
 function getEmbedUrl(rawLink: string): string {
   if (rawLink.includes("vimeo.com") || /^\d+$/.test(rawLink)) {
     const vid = rawLink.split("/").pop();
-    return `https://player.vimeo.com/video/${vid}`;
+    return `https://player.vimeo.com/video/${vid}?autoplay=1`;
   }
 
   if (rawLink.includes("drive.google.com")) {
@@ -905,7 +924,7 @@ function getEmbedUrl(rawLink: string): string {
       videoId = rawLink.split("v=")[1].split("&")[0];
     }
     if (videoId) {
-      return `https://www.youtube.com/embed/${videoId}`;
+      return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
     }
   }
 
@@ -944,7 +963,7 @@ function getEmbedUrl(rawLink: string): string {
       dmId = rawLink.split("/video/")[1].split("?")[0].split("_")[0];
     }
     if (dmId) {
-      return `https://www.dailymotion.com/embed/video/${dmId}`;
+      return `https://www.dailymotion.com/embed/video/${dmId}?autoplay=1`;
     }
   }
 
