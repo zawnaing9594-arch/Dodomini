@@ -340,8 +340,13 @@ export async function registerRoutes(
     const url = req.query.url as string;
     if (!url) return res.status(400).json({ error: "Missing url" });
     try {
-      const shareId = url.split("/").pop()?.replace(/[+-]$/, "") || "";
-      const embedUrl = `https://jumpshare.com/embed/${shareId}`;
+      let embedUrl: string;
+      if (url.includes("jumpshare.com/embed/")) {
+        embedUrl = url.split("?")[0].split("#")[0];
+      } else {
+        const shareId = url.split("/").pop()?.replace(/[+-]$/, "") || "";
+        embedUrl = `https://jumpshare.com/embed/${shareId}`;
+      }
       const response = await fetch(embedUrl, {
         headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
       });
