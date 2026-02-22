@@ -55,6 +55,20 @@ function getDropboxStreamUrl(url: string): string | null {
   return `/api/video-stream?url=${encodeURIComponent(rawUrl)}`;
 }
 
+function isJumpShareLink(url: string): boolean {
+  return (url.includes("jumpshare.com/s/") || url.includes("jumpshare.com/v/") || url.includes("jmp.sh/")) && !url.includes("jumpshare.com/embed/");
+}
+
+function getJumpShareDirectUrl(url: string): string {
+  const clean = url.split("?")[0].split("#")[0].replace(/[+-]$/, "");
+  return clean + "-";
+}
+
+function getJumpShareStreamUrl(url: string): string | null {
+  if (!isJumpShareLink(url)) return null;
+  return `/api/video-stream?url=${encodeURIComponent(getJumpShareDirectUrl(url))}`;
+}
+
 function formatTime(s: number): string {
   if (!isFinite(s)) return "0:00";
   const h = Math.floor(s / 3600);
@@ -70,9 +84,10 @@ function isMyanmarText(text: string): boolean {
 
 function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seriesTitle }: { embedUrl: string; videoLink: string; srtLink?: string | null; containerRef: React.RefObject<HTMLDivElement | null>; epTitle?: string; seriesTitle?: string }) {
   const dropboxStreamUrl = getDropboxStreamUrl(videoLink);
+  const jumpShareStreamUrl = getJumpShareStreamUrl(videoLink);
   const isObjectStorage = videoLink.startsWith("/objects/");
-  const isDirectVideo = dropboxStreamUrl ? true : isObjectStorage || /\.(mp4|webm|m3u8|mov|avi|mkv)(\?.*)?$/i.test(videoLink);
-  const directSrc = dropboxStreamUrl || videoLink;
+  const isDirectVideo = dropboxStreamUrl || jumpShareStreamUrl ? true : isObjectStorage || /\.(mp4|webm|m3u8|mov|avi|mkv)(\?.*)?$/i.test(videoLink);
+  const directSrc = dropboxStreamUrl || jumpShareStreamUrl || videoLink;
   const [iframeError, setIframeError] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
@@ -570,6 +585,7 @@ function DownloadButton({ videoLink, epId, epTitle }: { videoLink: string; epId:
   const isDirectVideo = /\.(mp4|webm|m3u8|mov|avi|mkv)(\?.*)?$/i.test(videoLink);
   const isGoogleDrive = videoLink.includes("drive.google.com");
   const isDropbox = videoLink.includes("dropbox.com");
+  const isJumpShare = isJumpShareLink(videoLink);
 
   const getDriveFileId = (url: string): string | null => {
     if (url.includes("/file/d/")) return url.split("/file/d/")[1].split("/")[0];
@@ -577,7 +593,7 @@ function DownloadButton({ videoLink, epId, epTitle }: { videoLink: string; epId:
     return null;
   };
 
-  const canDownload = isDirectVideo || isGoogleDrive || isDropbox;
+  const canDownload = isDirectVideo || isGoogleDrive || isDropbox || isJumpShare;
 
   if (isLoading) return null;
 
@@ -610,6 +626,8 @@ function DownloadButton({ videoLink, epId, epTitle }: { videoLink: string; epId:
     } else if (isDropbox) {
       const rawUrl = videoLink.replace(/[?&]dl=[01]/, "").replace(/\?$/, "") + (videoLink.includes("?") ? "&raw=1" : "?raw=1");
       downloadUrl = `/api/video-proxy?url=${encodeURIComponent(rawUrl)}&filename=${encodeURIComponent(filename)}`;
+    } else if (isJumpShare) {
+      downloadUrl = `/api/video-proxy?url=${encodeURIComponent(getJumpShareDirectUrl(videoLink))}&filename=${encodeURIComponent(filename)}`;
     } else {
       downloadUrl = `/api/video-proxy?url=${encodeURIComponent(videoLink)}&filename=${encodeURIComponent(filename)}`;
     }
@@ -703,6 +721,18 @@ function getEmbedUrl(rawLink: string): string {
   if (rawLink.includes("facebook.com") || rawLink.includes("fb.watch") || rawLink.includes("fb.com")) {
     const encodedUrl = encodeURIComponent(rawLink);
     return `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=false`;
+  }
+
+  if (rawLink.includes("jumpshare.com/s/") || rawLink.includes("jumpshare.com/v/") || rawLink.includes("jmp.sh/")) {
+    const cleanUrl = rawLink.split("?")[0].split("#")[0].replace(/[+-]$/, "");
+    const shareId = cleanUrl.split("/").pop();
+    if (shareId) {
+      return `https://jumpshare.com/embed/${shareId}`;
+    }
+  }
+
+  if (rawLink.includes("jumpshare.com/embed/")) {
+    return rawLink;
   }
 
   if (rawLink.includes("dailymotion.com") || rawLink.includes("dai.ly")) {

@@ -15,7 +15,7 @@ A movie/series streaming platform built with React (frontend) + Express (backend
 ## Key Features
 - Home page with banner carousel (admin-configurable) and content grid
 - Series detail page with episode listing
-- Video player supporting Vimeo, Google Drive, YouTube, Telegram, Facebook, Dailymotion, and direct links
+- Video player supporting Vimeo, Google Drive, YouTube, Telegram, Facebook, Dailymotion, JumpShare, and direct links
 - SRT subtitle support for direct video links
 - In-app download: direct video files saved to IndexedDB for offline viewing, embedded videos bookmarked
 - "My Downloads" page (/downloads) for offline video playback and bookmark management
