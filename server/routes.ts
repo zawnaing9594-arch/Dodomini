@@ -318,7 +318,7 @@ export async function registerRoutes(
 
     let resolvedLink = episode.videoLink;
     try {
-      resolvedLink = await autoResolveVideoLink(episode.videoLink);
+      resolvedLink = await autoResolveVideoLink(episode.videoLink, true);
     } catch {}
 
     const epData = { ...episode, videoLink: resolvedLink };
@@ -348,7 +348,7 @@ export async function registerRoutes(
 
     let resolvedLink = result.episode.videoLink;
     try {
-      resolvedLink = await autoResolveVideoLink(result.episode.videoLink);
+      resolvedLink = await autoResolveVideoLink(result.episode.videoLink, true);
     } catch {}
     const epData = { ...result.episode, videoLink: resolvedLink };
 

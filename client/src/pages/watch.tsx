@@ -102,18 +102,17 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
   const dropboxStreamUrl = getDropboxStreamUrl(videoLink);
   const cloudinaryStreamUrl = getCloudinaryStreamUrl(videoLink);
   const isJumpShare = isJumpShareLink(videoLink);
-  const [jumpShareResolvedUrl, setJumpShareResolvedUrl] = useState<string | null>(null);
-  const [jumpShareLoading, setJumpShareLoading] = useState(isJumpShare);
   const isObjectStorage = videoLink.startsWith("/objects/");
   const [directVideoFailed, setDirectVideoFailed] = useState(false);
   const [autoDetectedDirect, setAutoDetectedDirect] = useState<string | null>(null);
   const hasKnownExtension = /\.(mp4|webm|m3u8|mov|avi|mkv)(\?.*)?$/i.test(videoLink);
-  const isKnownEmbed = videoLink.includes("youtube.com") || videoLink.includes("youtu.be") || videoLink.includes("vimeo.com") || videoLink.includes("facebook.com") || videoLink.includes("fb.watch") || videoLink.includes("dailymotion.com") || videoLink.includes("dai.ly") || videoLink.includes("t.me/") || videoLink.includes("telegram.") || videoLink.includes("dropbox.com") || videoLink.includes("player.cloudinary.com") || videoLink.includes("cdn.jumpshare.com") || isJumpShare;
-  const needsProxy = videoLink.includes("cdn.jumpshare.com") || (videoLink.includes("res.cloudinary.com") && /\/video\/upload\//i.test(videoLink));
+  const isCdnJumpShareLink = videoLink.includes("cdn.jumpshare.com");
+  const isKnownEmbed = videoLink.includes("youtube.com") || videoLink.includes("youtu.be") || videoLink.includes("vimeo.com") || videoLink.includes("facebook.com") || videoLink.includes("fb.watch") || videoLink.includes("dailymotion.com") || videoLink.includes("dai.ly") || videoLink.includes("t.me/") || videoLink.includes("telegram.") || videoLink.includes("dropbox.com") || videoLink.includes("player.cloudinary.com") || isCdnJumpShareLink || isJumpShare;
+  const needsProxy = (videoLink.includes("res.cloudinary.com") && /\/video\/upload\//i.test(videoLink));
   const proxiedSrc = needsProxy ? `/api/video-stream?url=${encodeURIComponent(videoLink)}` : null;
-  const rawIsDirectVideo = dropboxStreamUrl || cloudinaryStreamUrl || jumpShareResolvedUrl || autoDetectedDirect || proxiedSrc ? true : isObjectStorage || hasKnownExtension;
+  const rawIsDirectVideo = dropboxStreamUrl || cloudinaryStreamUrl || autoDetectedDirect || proxiedSrc ? true : isObjectStorage || hasKnownExtension;
   const isDirectVideo = rawIsDirectVideo && !directVideoFailed;
-  const directSrc = dropboxStreamUrl || cloudinaryStreamUrl || jumpShareResolvedUrl || autoDetectedDirect || proxiedSrc || videoLink;
+  const directSrc = dropboxStreamUrl || cloudinaryStreamUrl || autoDetectedDirect || proxiedSrc || videoLink;
   const isFacebook = videoLink.includes("facebook.com") || videoLink.includes("fb.watch") || videoLink.includes("fb.com");
   const isGoogleDrive = embedUrl.includes("drive.google.com");
   const [iframeError, setIframeError] = useState(false);
@@ -178,22 +177,6 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
       .catch(() => {});
   }, [videoLink, hasKnownExtension, isKnownEmbed, isObjectStorage, dropboxStreamUrl, cloudinaryStreamUrl]);
 
-  useEffect(() => {
-    if (!isJumpShare) return;
-    setJumpShareLoading(true);
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 10000);
-    fetch(`/api/jumpshare-resolve?url=${encodeURIComponent(videoLink)}`, { signal: controller.signal })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data?.videoUrl) {
-          setJumpShareResolvedUrl(`/api/video-stream?url=${encodeURIComponent(data.videoUrl)}`);
-        }
-      })
-      .catch(() => {})
-      .finally(() => { clearTimeout(timer); setJumpShareLoading(false); });
-    return () => { controller.abort(); clearTimeout(timer); };
-  }, [videoLink, isJumpShare]);
 
   useEffect(() => {
     if (!srtLink) return;
@@ -410,13 +393,6 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
     return () => { if (embedSubTimerRef.current) clearInterval(embedSubTimerRef.current); };
   }, [embedSubStarted, srtCues, embedSubPaused]);
 
-  if (jumpShareLoading) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-black">
-        <div className="text-white text-sm">Loading video...</div>
-      </div>
-    );
-  }
 
   if (isDirectVideo) {
     return (
@@ -464,7 +440,7 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
             if (!videoReady) setVideoReady(true);
           }}
           onError={() => {
-            if (jumpShareResolvedUrl || dropboxStreamUrl || cloudinaryStreamUrl || autoDetectedDirect || proxiedSrc || (embedUrl && embedUrl !== videoLink)) {
+            if (dropboxStreamUrl || cloudinaryStreamUrl || autoDetectedDirect || proxiedSrc || (embedUrl && embedUrl !== videoLink)) {
               setDirectVideoFailed(true);
             }
           }}
@@ -957,7 +933,7 @@ function getEmbedUrl(rawLink: string): string {
     return `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=false`;
   }
 
-  if (rawLink.includes("jumpshare.com/s/") || rawLink.includes("jumpshare.com/v/") || rawLink.includes("jmp.sh/")) {
+  if (rawLink.includes("jumpshare.com/s/") || rawLink.includes("jumpshare.com/v/") || rawLink.includes("jumpshare.com/share/") || rawLink.includes("jmp.sh/")) {
     const cleanUrl = rawLink.split("?")[0].split("#")[0].replace(/[+-]$/, "");
     const shareId = cleanUrl.split("/").pop();
     if (shareId) {
