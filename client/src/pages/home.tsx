@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { type Content, type Episode } from "@shared/schema";
 import { ChevronLeft, ChevronRight, Play, Film, Bell, X, Search, Type, Minus, Plus, User, LogOut, Download, BellRing } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -388,13 +388,33 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSettings, setShowSettings] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (searchOpen && searchInputRef.current) {
       searchInputRef.current.focus();
     }
   }, [searchOpen]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const suggestions = useMemo(() => {
+    if (!allContent || !searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase().trim();
+    return allContent
+      .filter((c) => c.title.toLowerCase().includes(q))
+      .slice(0, 8);
+  }, [allContent, searchQuery]);
 
   const banners = bannerContent && bannerContent.length > 0 ? bannerContent : (allContent?.slice(0, 5) || []);
 
@@ -438,25 +458,57 @@ export default function Home() {
           </Link>
           <div className="flex items-center gap-1">
             {searchOpen ? (
-              <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm rounded-md border border-white/10 px-2">
-                <Search className="w-4 h-4 text-white/60 shrink-0" />
-                <Input
-                  ref={searchInputRef}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search..."
-                  className="border-0 bg-transparent text-white placeholder:text-white/40 focus-visible:ring-0 h-9 w-36 sm:w-48"
-                  data-testid="input-search"
-                />
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="text-white/60"
-                  onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
-                  data-testid="button-search-close"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </Button>
+              <div className="relative" ref={searchContainerRef}>
+                <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm rounded-md border border-white/10 px-2">
+                  <Search className="w-4 h-4 text-white/60 shrink-0" />
+                  <Input
+                    ref={searchInputRef}
+                    value={searchQuery}
+                    onChange={(e) => { setSearchQuery(e.target.value); setShowSuggestions(true); }}
+                    onFocus={() => setShowSuggestions(true)}
+                    placeholder="Search..."
+                    className="border-0 bg-transparent text-white placeholder:text-white/40 focus-visible:ring-0 h-9 w-36 sm:w-48"
+                    data-testid="input-search"
+                  />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="text-white/60"
+                    onClick={() => { setSearchOpen(false); setSearchQuery(""); setShowSuggestions(false); }}
+                    data-testid="button-search-close"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+                {showSuggestions && suggestions.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-2xl overflow-hidden z-50 max-h-[70vh] overflow-y-auto" data-testid="search-suggestions">
+                    {suggestions.map((item) => (
+                      <Link
+                        key={item.id}
+                        href={`/series/${item.id}`}
+                        onClick={() => { setShowSuggestions(false); setSearchQuery(""); setSearchOpen(false); }}
+                      >
+                        <div className="flex items-center gap-3 px-3 py-2.5 hover:bg-white/10 transition-colors cursor-pointer" data-testid={`suggestion-${item.id}`}>
+                          <img
+                            src={item.poster}
+                            alt={item.title}
+                            className="w-10 h-14 object-cover rounded-sm shrink-0"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-foreground truncate">{item.title}</p>
+                            <p className="text-xs text-muted-foreground capitalize">{item.type}</p>
+                          </div>
+                          <Play className="w-4 h-4 text-muted-foreground shrink-0" />
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+                {showSuggestions && searchQuery.trim() && suggestions.length === 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-2xl z-50 p-4 text-center" data-testid="search-no-results">
+                    <p className="text-sm text-muted-foreground">No results found</p>
+                  </div>
+                )}
               </div>
             ) : (
               <Button
