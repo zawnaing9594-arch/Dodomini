@@ -415,18 +415,18 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
         <div
           className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between p-3 md:p-4 transition-opacity duration-300 pointer-events-none"
           style={{
-            opacity: showControls ? 1 : 0,
-            background: "linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%)",
+            opacity: showControls ? 1 : 0.85,
+            background: showControls ? "linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%)" : "none",
             paddingBottom: "40px",
           }}
         >
           {(epTitle || seriesTitle) && (
             <div className="min-w-0 flex-1">
               {seriesTitle && (
-                <p className="text-white/70 text-xs md:text-sm truncate" data-testid="video-series-title">{seriesTitle}</p>
+                <p className="text-white/70 text-xs md:text-sm truncate" style={{ textShadow: "0 1px 6px rgba(0,0,0,0.9)" }} data-testid="video-series-title">{seriesTitle}</p>
               )}
               {epTitle && (
-                <p className="text-white font-medium text-sm md:text-base truncate" data-testid="video-ep-title">{epTitle}</p>
+                <p className="text-white font-medium text-sm md:text-base truncate" style={{ textShadow: "0 1px 6px rgba(0,0,0,0.9)" }} data-testid="video-ep-title">{epTitle}</p>
               )}
             </div>
           )}
@@ -434,7 +434,7 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
             src={logoImg}
             alt="Series Plus"
             className="shrink-0 ml-2"
-            style={{ height: isFullscreen ? "56px" : "44px", width: "auto", borderRadius: "6px" }}
+            style={{ height: isFullscreen ? "56px" : "44px", width: "auto", borderRadius: "6px", filter: showControls ? "none" : "drop-shadow(0 1px 4px rgba(0,0,0,0.8))" }}
             data-testid="video-logo"
           />
         </div>
@@ -451,7 +451,7 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
           <div
             className="absolute left-1/2 -translate-x-1/2 z-20 text-center pointer-events-none px-2"
             style={{
-              bottom: showControls ? (isFullscreen ? "80px" : "64px") : (isFullscreen ? "32px" : "16px"),
+              bottom: showControls ? (isFullscreen ? "100px" : "64px") : (isFullscreen ? "48px" : "20px"),
               transition: "bottom 0.3s ease",
               maxWidth: isFullscreen ? "80%" : "92%",
             }}
@@ -631,7 +631,7 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
   const embedSubDisplay = subsOn && currentSub && embedSubStarted && (
     <div
       className="absolute left-1/2 -translate-x-1/2 z-30 text-center pointer-events-none px-2"
-      style={{ bottom: "48px", maxWidth: "90%" }}
+      style={{ bottom: isFullscreen ? "60px" : "48px", maxWidth: "90%" }}
       data-testid="embed-subtitle-display"
     >
       <span
@@ -662,14 +662,14 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
           allowFullScreen
           data-testid="video-iframe"
         />
-        <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between p-3 pointer-events-none" style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 100%)", paddingBottom: "30px" }}>
+        <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between p-3 pointer-events-none" style={{ paddingBottom: "30px" }}>
           {(epTitle || seriesTitle) && (
             <div className="min-w-0 flex-1">
-              {seriesTitle && <p className="text-white/70 text-xs truncate">{seriesTitle}</p>}
-              {epTitle && <p className="text-white font-medium text-sm truncate">{epTitle}</p>}
+              {seriesTitle && <p className="text-white/70 text-xs truncate" style={{ textShadow: "0 1px 6px rgba(0,0,0,0.9)" }}>{seriesTitle}</p>}
+              {epTitle && <p className="text-white font-medium text-sm truncate" style={{ textShadow: "0 1px 6px rgba(0,0,0,0.9)" }}>{epTitle}</p>}
             </div>
           )}
-          <img src={logoImg} alt="Series Plus" className="shrink-0 ml-2" style={{ height: isFullscreen ? "56px" : "44px", width: "auto", borderRadius: "6px" }} data-testid="video-logo" />
+          <img src={logoImg} alt="Series Plus" className="shrink-0 ml-2" style={{ height: isFullscreen ? "56px" : "44px", width: "auto", borderRadius: "6px", filter: "drop-shadow(0 1px 4px rgba(0,0,0,0.8))" }} data-testid="video-logo" />
         </div>
         {embedSubDisplay}
         {embedSubControls}
@@ -687,14 +687,14 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
         onError={() => setIframeError(true)}
         data-testid="video-iframe"
       />
-      <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between p-3 pointer-events-none" style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 100%)", paddingBottom: "30px" }}>
+      <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between p-3 pointer-events-none" style={{ paddingBottom: "30px" }}>
         {(epTitle || seriesTitle) && (
           <div className="min-w-0 flex-1">
-            {seriesTitle && <p className="text-white/70 text-xs truncate">{seriesTitle}</p>}
-            {epTitle && <p className="text-white font-medium text-sm truncate">{epTitle}</p>}
+            {seriesTitle && <p className="text-white/70 text-xs truncate" style={{ textShadow: "0 1px 6px rgba(0,0,0,0.9)" }}>{seriesTitle}</p>}
+            {epTitle && <p className="text-white font-medium text-sm truncate" style={{ textShadow: "0 1px 6px rgba(0,0,0,0.9)" }}>{epTitle}</p>}
           </div>
         )}
-        <img src={logoImg} alt="Series Plus" className="shrink-0 ml-2" style={{ height: isFullscreen ? "56px" : "44px", width: "auto", borderRadius: "6px" }} data-testid="video-logo" />
+        <img src={logoImg} alt="Series Plus" className="shrink-0 ml-2" style={{ height: isFullscreen ? "56px" : "44px", width: "auto", borderRadius: "6px", filter: "drop-shadow(0 1px 4px rgba(0,0,0,0.8))" }} data-testid="video-logo" />
       </div>
       {embedSubDisplay}
       {embedSubControls}
