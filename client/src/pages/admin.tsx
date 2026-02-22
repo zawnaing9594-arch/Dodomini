@@ -705,12 +705,19 @@ function EditEpisodeDialog({ ep, contentId }: { ep: Episode; contentId: number }
               <label className="cursor-pointer">
                 <input
                   type="file"
-                  accept=".srt,.vtt,.ass,.ssa"
+                  accept=".srt,.vtt,.ass,.ssa,text/plain,application/x-subrip,*/*"
                   className="hidden"
                   data-testid={`input-edit-ep-srt-${ep.epId}`}
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
+                    const validExts = [".srt", ".vtt", ".ass", ".ssa"];
+                    const ext = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
+                    if (!validExts.includes(ext)) {
+                      toast({ title: "SRT, VTT, ASS, SSA ဖိုင်သာ ရွေးပါ", variant: "destructive" });
+                      e.target.value = "";
+                      return;
+                    }
                     try {
                       const metaRes = await fetch("/api/uploads/request-url", {
                         method: "POST",

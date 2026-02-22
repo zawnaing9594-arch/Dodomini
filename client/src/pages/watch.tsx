@@ -55,6 +55,11 @@ function getDropboxStreamUrl(url: string): string | null {
   return `/api/video-stream?url=${encodeURIComponent(rawUrl)}`;
 }
 
+function getCloudinaryStreamUrl(url: string): string | null {
+  if (!url.includes("res.cloudinary.com")) return null;
+  return `/api/video-stream?url=${encodeURIComponent(url)}`;
+}
+
 function isJumpShareLink(url: string): boolean {
   return (url.includes("jumpshare.com/s/") || url.includes("jumpshare.com/v/") || url.includes("jmp.sh/")) && !url.includes("jumpshare.com/embed/");
 }
@@ -75,6 +80,7 @@ function isMyanmarText(text: string): boolean {
 
 function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seriesTitle }: { embedUrl: string; videoLink: string; srtLink?: string | null; containerRef: React.RefObject<HTMLDivElement | null>; epTitle?: string; seriesTitle?: string }) {
   const dropboxStreamUrl = getDropboxStreamUrl(videoLink);
+  const cloudinaryStreamUrl = getCloudinaryStreamUrl(videoLink);
   const isJumpShare = isJumpShareLink(videoLink);
   const [jumpShareResolvedUrl, setJumpShareResolvedUrl] = useState<string | null>(null);
   const [jumpShareLoading, setJumpShareLoading] = useState(isJumpShare);
@@ -83,9 +89,9 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
   const [autoDetectedDirect, setAutoDetectedDirect] = useState<string | null>(null);
   const hasKnownExtension = /\.(mp4|webm|m3u8|mov|avi|mkv)(\?.*)?$/i.test(videoLink);
   const isKnownEmbed = videoLink.includes("youtube.com") || videoLink.includes("youtu.be") || videoLink.includes("vimeo.com") || videoLink.includes("facebook.com") || videoLink.includes("fb.watch") || videoLink.includes("dailymotion.com") || videoLink.includes("dai.ly") || videoLink.includes("t.me/") || videoLink.includes("telegram.") || videoLink.includes("dropbox.com") || isJumpShare;
-  const rawIsDirectVideo = dropboxStreamUrl || jumpShareResolvedUrl || autoDetectedDirect ? true : isObjectStorage || hasKnownExtension;
+  const rawIsDirectVideo = dropboxStreamUrl || cloudinaryStreamUrl || jumpShareResolvedUrl || autoDetectedDirect ? true : isObjectStorage || hasKnownExtension;
   const isDirectVideo = rawIsDirectVideo && !directVideoFailed;
-  const directSrc = dropboxStreamUrl || jumpShareResolvedUrl || autoDetectedDirect || videoLink;
+  const directSrc = dropboxStreamUrl || cloudinaryStreamUrl || jumpShareResolvedUrl || autoDetectedDirect || videoLink;
   const isFacebook = videoLink.includes("facebook.com") || videoLink.includes("fb.watch") || videoLink.includes("fb.com");
   const isGoogleDrive = embedUrl.includes("drive.google.com");
   const [iframeError, setIframeError] = useState(false);
@@ -112,7 +118,7 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
   const embedSubStartTimeRef = useRef(0);
 
   useEffect(() => {
-    if (hasKnownExtension || isKnownEmbed || isObjectStorage || dropboxStreamUrl) return;
+    if (hasKnownExtension || isKnownEmbed || isObjectStorage || dropboxStreamUrl || cloudinaryStreamUrl) return;
     const isHttp = videoLink.startsWith("http://") || videoLink.startsWith("https://");
     if (!isHttp) return;
     fetch(`/api/video-check?url=${encodeURIComponent(videoLink)}`)
@@ -123,7 +129,7 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
         }
       })
       .catch(() => {});
-  }, [videoLink, hasKnownExtension, isKnownEmbed, isObjectStorage, dropboxStreamUrl]);
+  }, [videoLink, hasKnownExtension, isKnownEmbed, isObjectStorage, dropboxStreamUrl, cloudinaryStreamUrl]);
 
   useEffect(() => {
     if (!isJumpShare) return;
