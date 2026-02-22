@@ -289,9 +289,22 @@
     left: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
-    max-height: 100vh !important;
+    height: 100dvh !important;
+    max-height: none !important;
     z-index: 9999 !important;
     background: #000 !important;
+    aspect-ratio: unset !important;
+  }
+
+  .css-fullscreen video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+  }
+
+  .css-fullscreen iframe {
+    width: 100% !important;
+    height: 100% !important;
   }
 
   /* If there's a 1px border, adjust the inset so that it covers that parent's border */

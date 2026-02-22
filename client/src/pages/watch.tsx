@@ -709,7 +709,7 @@ function VideoContainer({ embedUrl, videoLink, srtLink, epTitle, seriesTitle }: 
     <div
       ref={containerRef}
       className={`relative w-full bg-black ${isFullscreen ? "" : "aspect-video max-h-[80vh]"}`}
-      style={isFullscreen ? { width: "100%", height: "100%" } : undefined}
+      style={isFullscreen ? { width: "100vw", height: "100vh" } : undefined}
       data-testid="video-container"
       onContextMenu={(e) => e.preventDefault()}
     >
