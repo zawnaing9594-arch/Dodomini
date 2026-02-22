@@ -15,8 +15,11 @@ A movie/series streaming platform built with React (frontend) + Express (backend
 ## Key Features
 - Home page with banner carousel (admin-configurable) and content grid
 - Series detail page with episode listing
-- Video player supporting Vimeo, Google Drive, YouTube, Telegram, Facebook, Dailymotion, JumpShare, and direct links
-- SRT subtitle support for direct video links
+- Video player supporting Vimeo, Google Drive, YouTube, Telegram, Facebook, Dailymotion, JumpShare, Dropbox, and direct links
+- Auto-detection of direct video URLs: unknown links are probed server-side; broken direct links auto-fallback to iframe embed
+- JumpShare video playback via server-side CDN URL resolution (scrapes embed page for cdn.jumpshare.com URL)
+- SRT/VTT/ASS subtitle support with auto-format detection for direct video links
+- Native TextTrack injection for iOS Safari fullscreen subtitle display (webkitEnterFullscreen)
 - In-app download: direct video files saved to IndexedDB for offline viewing, embedded videos bookmarked
 - "My Downloads" page (/downloads) for offline video playback and bookmark management
 - Download progress tracking with percentage display

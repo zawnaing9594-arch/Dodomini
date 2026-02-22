@@ -81,8 +81,8 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
   const isObjectStorage = videoLink.startsWith("/objects/");
   const [directVideoFailed, setDirectVideoFailed] = useState(false);
   const [autoDetectedDirect, setAutoDetectedDirect] = useState<string | null>(null);
-  const [autoDetectLoading, setAutoDetectLoading] = useState(false);
   const hasKnownExtension = /\.(mp4|webm|m3u8|mov|avi|mkv)(\?.*)?$/i.test(videoLink);
+  const isKnownEmbed = videoLink.includes("youtube.com") || videoLink.includes("youtu.be") || videoLink.includes("vimeo.com") || videoLink.includes("facebook.com") || videoLink.includes("fb.watch") || videoLink.includes("dailymotion.com") || videoLink.includes("dai.ly") || videoLink.includes("t.me/") || videoLink.includes("telegram.") || videoLink.includes("dropbox.com") || isJumpShare;
   const rawIsDirectVideo = dropboxStreamUrl || jumpShareResolvedUrl || autoDetectedDirect ? true : isObjectStorage || hasKnownExtension;
   const isDirectVideo = rawIsDirectVideo && !directVideoFailed;
   const directSrc = dropboxStreamUrl || jumpShareResolvedUrl || autoDetectedDirect || videoLink;
@@ -110,6 +110,20 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
   const [embedSubTime, setEmbedSubTime] = useState(0);
   const embedSubTimerRef = useRef<ReturnType<typeof setInterval>>();
   const embedSubStartTimeRef = useRef(0);
+
+  useEffect(() => {
+    if (hasKnownExtension || isKnownEmbed || isObjectStorage || dropboxStreamUrl) return;
+    const isHttp = videoLink.startsWith("http://") || videoLink.startsWith("https://");
+    if (!isHttp) return;
+    fetch(`/api/video-check?url=${encodeURIComponent(videoLink)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.isVideo) {
+          setAutoDetectedDirect(`/api/video-stream?url=${encodeURIComponent(videoLink)}`);
+        }
+      })
+      .catch(() => {});
+  }, [videoLink, hasKnownExtension, isKnownEmbed, isObjectStorage, dropboxStreamUrl]);
 
   useEffect(() => {
     if (!isJumpShare) return;
@@ -149,6 +163,52 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
     video.addEventListener("timeupdate", onTimeUpdate);
     return () => video.removeEventListener("timeupdate", onTimeUpdate);
   }, [srtCues]);
+
+  useEffect(() => {
+    if (!srtCues.length || !videoRef.current) return;
+    const video = videoRef.current;
+    let track: TextTrack | null = null;
+    for (let i = 0; i < video.textTracks.length; i++) {
+      if (video.textTracks[i].label === "injected-subs") {
+        track = video.textTracks[i];
+        break;
+      }
+    }
+    if (!track) {
+      track = video.addTextTrack("subtitles", "injected-subs", "my");
+    }
+    while (track.cues && track.cues.length > 0) {
+      track.removeCue(track.cues[0]);
+    }
+    for (const cue of srtCues) {
+      try {
+        track.addCue(new VTTCue(cue.startTime, cue.endTime, cue.text));
+      } catch {}
+    }
+    track.mode = subsOn ? "showing" : "hidden";
+
+    const syncTrackMode = () => {
+      if (!track) return;
+      const vid = videoRef.current;
+      const isNativeVideoFS = vid && (vid as any).webkitDisplayingFullscreen === true;
+      if (isNativeVideoFS) {
+        track.mode = subsOn ? "showing" : "hidden";
+      } else {
+        track.mode = "hidden";
+      }
+    };
+    syncTrackMode();
+    video.addEventListener("webkitbeginfullscreen", syncTrackMode);
+    video.addEventListener("webkitendfullscreen", syncTrackMode);
+    document.addEventListener("fullscreenchange", syncTrackMode);
+    document.addEventListener("webkitfullscreenchange", syncTrackMode);
+    return () => {
+      video.removeEventListener("webkitbeginfullscreen", syncTrackMode);
+      video.removeEventListener("webkitendfullscreen", syncTrackMode);
+      document.removeEventListener("fullscreenchange", syncTrackMode);
+      document.removeEventListener("webkitfullscreenchange", syncTrackMode);
+    };
+  }, [srtCues, subsOn]);
 
   useEffect(() => {
     const handleFS = () => {
