@@ -168,7 +168,7 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
     };
     video.addEventListener("timeupdate", onTimeUpdate);
     return () => video.removeEventListener("timeupdate", onTimeUpdate);
-  }, [srtCues]);
+  }, [srtCues, jumpShareLoading, isDirectVideo]);
 
   useEffect(() => {
     if (!srtCues.length || !videoRef.current) return;
@@ -214,7 +214,7 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
       document.removeEventListener("fullscreenchange", syncTrackMode);
       document.removeEventListener("webkitfullscreenchange", syncTrackMode);
     };
-  }, [srtCues, subsOn]);
+  }, [srtCues, subsOn, jumpShareLoading, isDirectVideo]);
 
   useEffect(() => {
     const handleFS = () => {
