@@ -88,6 +88,8 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
   const isObjectStorage = videoLink.startsWith("/objects/");
   const isDirectVideo = dropboxStreamUrl || jumpShareStreamUrl ? true : isObjectStorage || /\.(mp4|webm|m3u8|mov|avi|mkv)(\?.*)?$/i.test(videoLink);
   const directSrc = dropboxStreamUrl || jumpShareStreamUrl || videoLink;
+  const isFacebook = videoLink.includes("facebook.com") || videoLink.includes("fb.watch") || videoLink.includes("fb.com");
+  const isGoogleDrive = embedUrl.includes("drive.google.com");
   const [iframeError, setIframeError] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
@@ -106,6 +108,10 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isSeeking, setIsSeeking] = useState(false);
   const [showBigPlay, setShowBigPlay] = useState(true);
+  const [embedSubStarted, setEmbedSubStarted] = useState(false);
+  const [embedSubTime, setEmbedSubTime] = useState(0);
+  const embedSubTimerRef = useRef<ReturnType<typeof setInterval>>();
+  const embedSubStartTimeRef = useRef(0);
 
   useEffect(() => {
     if (!srtLink) return;
@@ -160,33 +166,41 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
   const toggleFullscreen = useCallback(async () => {
     const el = containerRef.current as any;
     if (!el) return;
-    const isFS = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
-    if (!isFS) {
+    const nativeFS = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
+    const cssFS = el.classList.contains("css-fullscreen");
+
+    if (nativeFS) {
       try {
-        if (el.requestFullscreen) { await el.requestFullscreen(); return; }
-        if (el.webkitRequestFullscreen) { el.webkitRequestFullscreen(); return; }
+        if (document.exitFullscreen) { await document.exitFullscreen(); }
+        else if ((document as any).webkitExitFullscreen) { (document as any).webkitExitFullscreen(); }
       } catch {}
-      el.classList.add("css-fullscreen");
-      document.body.style.overflow = "hidden";
-      setIsFullscreen(true);
-      const handleEsc = (e: KeyboardEvent) => {
-        if (e.key === "Escape") {
-          el.classList.remove("css-fullscreen");
-          document.body.style.overflow = "";
-          setIsFullscreen(false);
-          document.removeEventListener("keydown", handleEsc);
-        }
-      };
-      document.addEventListener("keydown", handleEsc);
-    } else {
-      try {
-        if (document.exitFullscreen) { await document.exitFullscreen(); return; }
-        if ((document as any).webkitExitFullscreen) { (document as any).webkitExitFullscreen(); return; }
-      } catch {}
+      return;
+    }
+
+    if (cssFS) {
       el.classList.remove("css-fullscreen");
       document.body.style.overflow = "";
       setIsFullscreen(false);
+      return;
     }
+
+    try {
+      if (el.requestFullscreen) { await el.requestFullscreen(); return; }
+      if (el.webkitRequestFullscreen) { el.webkitRequestFullscreen(); return; }
+    } catch {}
+
+    el.classList.add("css-fullscreen");
+    document.body.style.overflow = "hidden";
+    setIsFullscreen(true);
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        el.classList.remove("css-fullscreen");
+        document.body.style.overflow = "";
+        setIsFullscreen(false);
+        document.removeEventListener("keydown", handleEsc);
+      }
+    };
+    document.addEventListener("keydown", handleEsc);
   }, [containerRef]);
 
   const handleProgressClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -215,6 +229,18 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
   }, [togglePlay, skip, toggleFullscreen]);
+
+  useEffect(() => {
+    if (!embedSubStarted || !srtCues.length) return;
+    embedSubStartTimeRef.current = Date.now() - embedSubTime * 1000;
+    embedSubTimerRef.current = setInterval(() => {
+      const elapsed = (Date.now() - embedSubStartTimeRef.current) / 1000;
+      setEmbedSubTime(elapsed);
+      const cue = srtCues.find((c) => elapsed >= c.startTime && elapsed <= c.endTime);
+      setCurrentSub(cue ? cue.text : "");
+    }, 100);
+    return () => { if (embedSubTimerRef.current) clearInterval(embedSubTimerRef.current); };
+  }, [embedSubStarted, srtCues]);
 
   if (isDirectVideo) {
     return (
@@ -368,10 +394,10 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
                 {isPlaying ? <Pause className="w-5 h-5 md:w-6 md:h-6 fill-white" /> : <Play className="w-5 h-5 md:w-6 md:h-6 fill-white ml-0.5" />}
               </button>
 
-              <button onClick={(e) => { e.stopPropagation(); skip(-10); }} className="text-white/80 hover:text-white text-xs font-bold p-1 hidden md:block" data-testid="button-rewind">
+              <button onClick={(e) => { e.stopPropagation(); skip(-10); }} className="text-white/80 hover:text-white text-xs font-bold p-1" data-testid="button-rewind">
                 -10s
               </button>
-              <button onClick={(e) => { e.stopPropagation(); skip(10); }} className="text-white/80 hover:text-white text-xs font-bold p-1 hidden md:block" data-testid="button-forward">
+              <button onClick={(e) => { e.stopPropagation(); skip(10); }} className="text-white/80 hover:text-white text-xs font-bold p-1" data-testid="button-forward">
                 +10s
               </button>
 
@@ -424,26 +450,6 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
       </div>
     );
   }
-
-  const isFacebook = videoLink.includes("facebook.com") || videoLink.includes("fb.watch") || videoLink.includes("fb.com");
-  const isGoogleDrive = embedUrl.includes("drive.google.com");
-
-  const [embedSubStarted, setEmbedSubStarted] = useState(false);
-  const [embedSubTime, setEmbedSubTime] = useState(0);
-  const embedSubTimerRef = useRef<ReturnType<typeof setInterval>>();
-  const embedSubStartTimeRef = useRef(0);
-
-  useEffect(() => {
-    if (!embedSubStarted || !srtCues.length) return;
-    embedSubStartTimeRef.current = Date.now() - embedSubTime * 1000;
-    embedSubTimerRef.current = setInterval(() => {
-      const elapsed = (Date.now() - embedSubStartTimeRef.current) / 1000;
-      setEmbedSubTime(elapsed);
-      const cue = srtCues.find((c) => elapsed >= c.startTime && elapsed <= c.endTime);
-      setCurrentSub(cue ? cue.text : "");
-    }, 100);
-    return () => { if (embedSubTimerRef.current) clearInterval(embedSubTimerRef.current); };
-  }, [embedSubStarted, srtCues]);
 
   const embedSubControls = (
     <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2" data-testid="embed-sub-controls">
@@ -660,16 +666,30 @@ function VideoContainer({ embedUrl, videoLink, srtLink, epTitle, seriesTitle }: 
     };
     document.addEventListener("fullscreenchange", handleChange);
     document.addEventListener("webkitfullscreenchange", handleChange);
+
+    const el = containerRef.current;
+    let observer: MutationObserver | null = null;
+    if (el) {
+      observer = new MutationObserver(() => {
+        const cssFS = el.classList.contains("css-fullscreen");
+        const nativeFS = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
+        setIsFullscreen(nativeFS || cssFS);
+      });
+      observer.observe(el, { attributes: true, attributeFilter: ["class"] });
+    }
+
     return () => {
       document.removeEventListener("fullscreenchange", handleChange);
       document.removeEventListener("webkitfullscreenchange", handleChange);
+      observer?.disconnect();
     };
   }, []);
 
   return (
     <div
       ref={containerRef}
-      className={`relative w-full bg-black ${isFullscreen ? "h-screen" : "aspect-video max-h-[80vh]"}`}
+      className={`relative w-full bg-black ${isFullscreen ? "" : "aspect-video max-h-[80vh]"}`}
+      style={isFullscreen ? { width: "100%", height: "100%" } : undefined}
       data-testid="video-container"
       onContextMenu={(e) => e.preventDefault()}
     >
