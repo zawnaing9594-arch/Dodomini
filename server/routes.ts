@@ -52,15 +52,17 @@ function resolveCloudinaryUrl(url: string): string | null {
   return null;
 }
 
-async function autoResolveVideoLink(videoLink: string): Promise<string> {
+async function autoResolveVideoLink(videoLink: string, forStorage = false): Promise<string> {
   if (videoLink.includes("player.cloudinary.com")) {
     const resolved = resolveCloudinaryUrl(videoLink);
     if (resolved) return resolved;
   }
-  const isJumpShare = videoLink.includes("jumpshare.com/embed/") || videoLink.includes("jumpshare.com/s/") || videoLink.includes("jumpshare.com/v/") || videoLink.includes("jumpshare.com/share/") || videoLink.includes("jmp.sh/");
-  if (isJumpShare && !videoLink.includes("cdn.jumpshare.com")) {
-    const resolved = await resolveJumpShareUrl(videoLink);
-    if (resolved) return resolved;
+  if (!forStorage) {
+    const isJumpShare = videoLink.includes("jumpshare.com/embed/") || videoLink.includes("jumpshare.com/s/") || videoLink.includes("jumpshare.com/v/") || videoLink.includes("jumpshare.com/share/") || videoLink.includes("jmp.sh/");
+    if (isJumpShare && !videoLink.includes("cdn.jumpshare.com")) {
+      const resolved = await resolveJumpShareUrl(videoLink);
+      if (resolved) return resolved;
+    }
   }
   return videoLink;
 }
@@ -73,7 +75,8 @@ async function autoResolveExistingEpisodes() {
     const allEps = await db.select({ epId: episodes.epId, videoLink: episodes.videoLink }).from(episodes);
     for (const ep of allEps) {
       if (!ep.videoLink) continue;
-      const resolved = await autoResolveVideoLink(ep.videoLink);
+      if (ep.videoLink.includes("cdn.jumpshare.com")) continue;
+      const resolved = await autoResolveVideoLink(ep.videoLink, true);
       if (resolved !== ep.videoLink) {
         await db.update(episodes).set({ videoLink: resolved }).where(eq(episodes.epId, ep.epId));
         console.log(`Auto-resolved episode ${ep.epId}: ${ep.videoLink.substring(0, 60)}... → ${resolved.substring(0, 60)}...`);
@@ -208,7 +211,7 @@ export async function registerRoutes(
   app.post("/api/episodes", async (req, res) => {
     const parsed = insertEpisodeSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
-    const resolvedLink = await autoResolveVideoLink(parsed.data.videoLink);
+    const resolvedLink = await autoResolveVideoLink(parsed.data.videoLink, true);
     const existing = await storage.getEpisodesByContentId(parsed.data.contentId);
     const maxOrder = existing.length > 0 ? Math.max(...existing.map((e) => e.epOrder)) : -1;
     const ep = await storage.createEpisode({ ...parsed.data, videoLink: resolvedLink, epOrder: maxOrder + 1 });
@@ -242,7 +245,7 @@ export async function registerRoutes(
     const toInsert = await Promise.all(
       parsed.map(async (item) => ({
         ...item,
-        videoLink: await autoResolveVideoLink(item.videoLink),
+        videoLink: await autoResolveVideoLink(item.videoLink, true),
       }))
     );
 
@@ -269,7 +272,7 @@ export async function registerRoutes(
     if (typeof isLocked === "boolean") updateData.isLocked = isLocked;
     if (typeof password === "string") updateData.password = password || null;
     if (typeof epTitle === "string" && epTitle.trim()) updateData.epTitle = epTitle.trim();
-    if (typeof videoLink === "string" && videoLink.trim()) updateData.videoLink = await autoResolveVideoLink(videoLink.trim());
+    if (typeof videoLink === "string" && videoLink.trim()) updateData.videoLink = await autoResolveVideoLink(videoLink.trim(), true);
     if (typeof srtLink === "string") updateData.srtLink = srtLink.trim() || null;
     if (typeof contentId === "number") updateData.contentId = contentId;
     const ep = await storage.updateEpisode(epId, updateData);
@@ -313,10 +316,17 @@ export async function registerRoutes(
     const unlockKey = `unlocked_ep_${epId}`;
     const sessionUnlocked = (req.session as any)?.[unlockKey];
 
+    let resolvedLink = episode.videoLink;
+    try {
+      resolvedLink = await autoResolveVideoLink(episode.videoLink);
+    } catch {}
+
+    const epData = { ...episode, videoLink: resolvedLink };
+
     res.json({
       episode: isLocked && !sessionUnlocked
-        ? { ...episode, isLocked: true, password: undefined }
-        : { ...episode, isLocked: false, password: undefined },
+        ? { ...epData, isLocked: true, password: undefined }
+        : { ...epData, isLocked: false, password: undefined },
       parent,
       allEpisodes: allEpisodes.map((ep) => ({
         ...ep,
@@ -336,10 +346,16 @@ export async function registerRoutes(
     const unlockKey = `unlocked_ep_${result.episode.epId}`;
     const sessionUnlocked = (req.session as any)?.[unlockKey];
 
+    let resolvedLink = result.episode.videoLink;
+    try {
+      resolvedLink = await autoResolveVideoLink(result.episode.videoLink);
+    } catch {}
+    const epData = { ...result.episode, videoLink: resolvedLink };
+
     res.json({
       episode: isLocked && !sessionUnlocked
-        ? { ...result.episode, isLocked: true, password: undefined }
-        : { ...result.episode, isLocked: false, password: undefined },
+        ? { ...epData, isLocked: true, password: undefined }
+        : { ...epData, isLocked: false, password: undefined },
       parent: result.parent,
       allEpisodes: allEpisodes.map((ep) => ({
         ...ep,
