@@ -174,13 +174,14 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
   const toggleFullscreen = useCallback(async () => {
     const el = containerRef.current as any;
     if (!el) return;
-    const nativeFS = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
+    const doc = document as any;
+    const nativeFS = !!(doc.fullscreenElement || doc.webkitFullscreenElement);
     const cssFS = el.classList.contains("css-fullscreen");
 
     if (nativeFS) {
       try {
-        if (document.exitFullscreen) { await document.exitFullscreen(); }
-        else if ((document as any).webkitExitFullscreen) { (document as any).webkitExitFullscreen(); }
+        if (doc.exitFullscreen) { await doc.exitFullscreen(); }
+        else if (doc.webkitExitFullscreen) { doc.webkitExitFullscreen(); }
       } catch {}
       return;
     }
@@ -192,23 +193,33 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
       return;
     }
 
+    let entered = false;
     try {
-      if (el.requestFullscreen) { await el.requestFullscreen(); return; }
-      if (el.webkitRequestFullscreen) { el.webkitRequestFullscreen(); return; }
+      if (el.requestFullscreen) {
+        await el.requestFullscreen();
+        entered = !!(doc.fullscreenElement || doc.webkitFullscreenElement);
+      }
+      if (!entered && el.webkitRequestFullscreen) {
+        el.webkitRequestFullscreen();
+        await new Promise(r => setTimeout(r, 300));
+        entered = !!(doc.fullscreenElement || doc.webkitFullscreenElement);
+      }
     } catch {}
 
-    el.classList.add("css-fullscreen");
-    document.body.style.overflow = "hidden";
-    setIsFullscreen(true);
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        el.classList.remove("css-fullscreen");
-        document.body.style.overflow = "";
-        setIsFullscreen(false);
-        document.removeEventListener("keydown", handleEsc);
-      }
-    };
-    document.addEventListener("keydown", handleEsc);
+    if (!entered) {
+      el.classList.add("css-fullscreen");
+      document.body.style.overflow = "hidden";
+      setIsFullscreen(true);
+      const handleEsc = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          el.classList.remove("css-fullscreen");
+          document.body.style.overflow = "";
+          setIsFullscreen(false);
+          document.removeEventListener("keydown", handleEsc);
+        }
+      };
+      document.addEventListener("keydown", handleEsc);
+    }
   }, [containerRef]);
 
   const handleProgressClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -709,7 +720,6 @@ function VideoContainer({ embedUrl, videoLink, srtLink, epTitle, seriesTitle }: 
     <div
       ref={containerRef}
       className={`relative w-full bg-black ${isFullscreen ? "" : "aspect-video max-h-[80vh]"}`}
-      style={isFullscreen ? { width: "100vw", height: "100vh" } : undefined}
       data-testid="video-container"
       onContextMenu={(e) => e.preventDefault()}
     >

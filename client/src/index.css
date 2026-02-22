@@ -287,24 +287,34 @@
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    height: 100dvh !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
     max-height: none !important;
-    z-index: 9999 !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    z-index: 2147483647 !important;
     background: #000 !important;
     aspect-ratio: unset !important;
+    transform: none !important;
+    contain: layout style !important;
   }
 
   .css-fullscreen video {
     width: 100% !important;
     height: 100% !important;
+    max-height: 100% !important;
     object-fit: contain !important;
   }
 
   .css-fullscreen iframe {
     width: 100% !important;
     height: 100% !important;
+    max-height: 100% !important;
   }
 
   /* If there's a 1px border, adjust the inset so that it covers that parent's border */
