@@ -336,20 +336,53 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/jumpshare-resolve", async (req, res) => {
+    const url = req.query.url as string;
+    if (!url) return res.status(400).json({ error: "Missing url" });
+    try {
+      const shareId = url.split("/").pop()?.replace(/[+-]$/, "") || "";
+      const embedUrl = `https://jumpshare.com/embed/${shareId}`;
+      const response = await fetch(embedUrl, {
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
+      });
+      if (!response.ok) return res.status(502).json({ error: "Failed to fetch embed page" });
+      const html = await response.text();
+      const cdnMatch = html.match(/src="(https:\/\/cdn\.jumpshare\.com\/preview\/[^"]+)"/);
+      if (cdnMatch && cdnMatch[1]) {
+        return res.json({ videoUrl: cdnMatch[1] });
+      }
+      return res.status(404).json({ error: "Video URL not found in embed page" });
+    } catch {
+      res.status(500).json({ error: "Resolve failed" });
+    }
+  });
+
   app.get("/api/video-stream", async (req, res) => {
     const url = req.query.url as string;
     if (!url) return res.status(400).json({ error: "Missing url" });
     try {
+      const rangeHeader = req.headers.range;
+      const fetchHeaders: Record<string, string> = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      };
+      if (rangeHeader) fetchHeaders["Range"] = rangeHeader;
+
       const response = await fetch(url, {
         redirect: "follow",
-        headers: { "User-Agent": "Mozilla/5.0" },
+        headers: fetchHeaders,
       });
-      if (!response.ok) return res.status(502).json({ error: "Failed to fetch video" });
+      if (!response.ok && response.status !== 206) return res.status(502).json({ error: "Failed to fetch video" });
       const contentType = response.headers.get("content-type") || "video/mp4";
+      if (contentType.includes("text/html")) {
+        return res.status(415).json({ error: "Not a video file" });
+      }
       const contentLength = response.headers.get("content-length");
+      const contentRange = response.headers.get("content-range");
+      res.status(response.status === 206 ? 206 : 200);
       res.setHeader("Content-Type", contentType);
       if (contentLength) res.setHeader("Content-Length", contentLength);
-      res.setHeader("Accept-Ranges", "none");
+      if (contentRange) res.setHeader("Content-Range", contentRange);
+      res.setHeader("Accept-Ranges", "bytes");
       const reader = response.body?.getReader();
       if (!reader) return res.status(502).json({ error: "No body" });
       while (true) {

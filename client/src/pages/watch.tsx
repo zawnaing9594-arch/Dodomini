@@ -59,15 +59,6 @@ function isJumpShareLink(url: string): boolean {
   return (url.includes("jumpshare.com/s/") || url.includes("jumpshare.com/v/") || url.includes("jmp.sh/")) && !url.includes("jumpshare.com/embed/");
 }
 
-function getJumpShareDirectUrl(url: string): string {
-  const clean = url.split("?")[0].split("#")[0].replace(/[+-]$/, "");
-  return clean + "-";
-}
-
-function getJumpShareStreamUrl(url: string): string | null {
-  if (!isJumpShareLink(url)) return null;
-  return `/api/video-stream?url=${encodeURIComponent(getJumpShareDirectUrl(url))}`;
-}
 
 function formatTime(s: number): string {
   if (!isFinite(s)) return "0:00";
@@ -84,10 +75,12 @@ function isMyanmarText(text: string): boolean {
 
 function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seriesTitle }: { embedUrl: string; videoLink: string; srtLink?: string | null; containerRef: React.RefObject<HTMLDivElement | null>; epTitle?: string; seriesTitle?: string }) {
   const dropboxStreamUrl = getDropboxStreamUrl(videoLink);
-  const jumpShareStreamUrl = getJumpShareStreamUrl(videoLink);
+  const isJumpShare = isJumpShareLink(videoLink);
+  const [jumpShareResolvedUrl, setJumpShareResolvedUrl] = useState<string | null>(null);
+  const [jumpShareLoading, setJumpShareLoading] = useState(isJumpShare);
   const isObjectStorage = videoLink.startsWith("/objects/");
-  const isDirectVideo = dropboxStreamUrl || jumpShareStreamUrl ? true : isObjectStorage || /\.(mp4|webm|m3u8|mov|avi|mkv)(\?.*)?$/i.test(videoLink);
-  const directSrc = dropboxStreamUrl || jumpShareStreamUrl || videoLink;
+  const isDirectVideo = dropboxStreamUrl || jumpShareResolvedUrl ? true : isObjectStorage || /\.(mp4|webm|m3u8|mov|avi|mkv)(\?.*)?$/i.test(videoLink);
+  const directSrc = dropboxStreamUrl || jumpShareResolvedUrl || videoLink;
   const isFacebook = videoLink.includes("facebook.com") || videoLink.includes("fb.watch") || videoLink.includes("fb.com");
   const isGoogleDrive = embedUrl.includes("drive.google.com");
   const [iframeError, setIframeError] = useState(false);
@@ -112,6 +105,23 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
   const [embedSubTime, setEmbedSubTime] = useState(0);
   const embedSubTimerRef = useRef<ReturnType<typeof setInterval>>();
   const embedSubStartTimeRef = useRef(0);
+
+  useEffect(() => {
+    if (!isJumpShare) return;
+    setJumpShareLoading(true);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
+    fetch(`/api/jumpshare-resolve?url=${encodeURIComponent(videoLink)}`, { signal: controller.signal })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.videoUrl) {
+          setJumpShareResolvedUrl(`/api/video-stream?url=${encodeURIComponent(data.videoUrl)}`);
+        }
+      })
+      .catch(() => {})
+      .finally(() => { clearTimeout(timer); setJumpShareLoading(false); });
+    return () => { controller.abort(); clearTimeout(timer); };
+  }, [videoLink, isJumpShare]);
 
   useEffect(() => {
     if (!srtLink) return;
@@ -276,6 +286,14 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
     }, 100);
     return () => { if (embedSubTimerRef.current) clearInterval(embedSubTimerRef.current); };
   }, [embedSubStarted, srtCues]);
+
+  if (jumpShareLoading) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-black">
+        <div className="text-white text-sm">Loading video...</div>
+      </div>
+    );
+  }
 
   if (isDirectVideo) {
     return (
@@ -648,7 +666,7 @@ function DownloadButton({ videoLink, epId, epTitle }: { videoLink: string; epId:
     );
   }
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!canDownload) {
       window.open(videoLink, "_blank", "noopener,noreferrer");
       toast({ title: "Video link ဖွင့်ပေးပါပြီ", description: "ဖွင့်ထားတဲ့ page ကနေ video ကို save လုပ်ပါ" });
@@ -668,7 +686,13 @@ function DownloadButton({ videoLink, epId, epTitle }: { videoLink: string; epId:
       const rawUrl = videoLink.replace(/[?&]dl=[01]/, "").replace(/\?$/, "") + (videoLink.includes("?") ? "&raw=1" : "?raw=1");
       downloadUrl = `/api/video-proxy?url=${encodeURIComponent(rawUrl)}&filename=${encodeURIComponent(filename)}`;
     } else if (isJumpShare) {
-      downloadUrl = `/api/video-proxy?url=${encodeURIComponent(getJumpShareDirectUrl(videoLink))}&filename=${encodeURIComponent(filename)}`;
+      const resolveRes = await fetch(`/api/jumpshare-resolve?url=${encodeURIComponent(videoLink)}`);
+      if (resolveRes.ok) {
+        const { videoUrl } = await resolveRes.json();
+        downloadUrl = `/api/video-proxy?url=${encodeURIComponent(videoUrl)}&filename=${encodeURIComponent(filename)}`;
+      } else {
+        downloadUrl = `/api/video-proxy?url=${encodeURIComponent(videoLink)}&filename=${encodeURIComponent(filename)}`;
+      }
     } else {
       downloadUrl = `/api/video-proxy?url=${encodeURIComponent(videoLink)}&filename=${encodeURIComponent(filename)}`;
     }
