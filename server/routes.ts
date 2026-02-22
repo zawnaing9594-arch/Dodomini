@@ -396,6 +396,24 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/video-check", async (req, res) => {
+    const url = req.query.url as string;
+    if (!url) return res.status(400).json({ error: "Missing url" });
+    try {
+      const response = await fetch(url, {
+        method: "HEAD",
+        redirect: "follow",
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
+      });
+      const contentType = response.headers.get("content-type") || "";
+      const isVideo = contentType.startsWith("video/") || contentType.includes("octet-stream");
+      const contentLength = response.headers.get("content-length");
+      res.json({ isVideo, contentType, contentLength });
+    } catch {
+      res.json({ isVideo: false, contentType: "", contentLength: null });
+    }
+  });
+
   app.get("/api/video-proxy", async (req, res) => {
     const url = req.query.url as string;
     const filename = (req.query.filename as string) || "video.mp4";

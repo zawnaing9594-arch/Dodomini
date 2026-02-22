@@ -79,8 +79,13 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
   const [jumpShareResolvedUrl, setJumpShareResolvedUrl] = useState<string | null>(null);
   const [jumpShareLoading, setJumpShareLoading] = useState(isJumpShare);
   const isObjectStorage = videoLink.startsWith("/objects/");
-  const isDirectVideo = dropboxStreamUrl || jumpShareResolvedUrl ? true : isObjectStorage || /\.(mp4|webm|m3u8|mov|avi|mkv)(\?.*)?$/i.test(videoLink);
-  const directSrc = dropboxStreamUrl || jumpShareResolvedUrl || videoLink;
+  const [directVideoFailed, setDirectVideoFailed] = useState(false);
+  const [autoDetectedDirect, setAutoDetectedDirect] = useState<string | null>(null);
+  const [autoDetectLoading, setAutoDetectLoading] = useState(false);
+  const hasKnownExtension = /\.(mp4|webm|m3u8|mov|avi|mkv)(\?.*)?$/i.test(videoLink);
+  const rawIsDirectVideo = dropboxStreamUrl || jumpShareResolvedUrl || autoDetectedDirect ? true : isObjectStorage || hasKnownExtension;
+  const isDirectVideo = rawIsDirectVideo && !directVideoFailed;
+  const directSrc = dropboxStreamUrl || jumpShareResolvedUrl || autoDetectedDirect || videoLink;
   const isFacebook = videoLink.includes("facebook.com") || videoLink.includes("fb.watch") || videoLink.includes("fb.com");
   const isGoogleDrive = embedUrl.includes("drive.google.com");
   const [iframeError, setIframeError] = useState(false);
@@ -332,6 +337,11 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
             if (videoRef.current) {
               setVolume(videoRef.current.volume);
               setIsMuted(videoRef.current.muted);
+            }
+          }}
+          onError={() => {
+            if (embedUrl && embedUrl !== videoLink) {
+              setDirectVideoFailed(true);
             }
           }}
         />
