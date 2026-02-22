@@ -107,8 +107,8 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
   const [autoDetectedDirect, setAutoDetectedDirect] = useState<string | null>(null);
   const hasKnownExtension = /\.(mp4|webm|m3u8|mov|avi|mkv)(\?.*)?$/i.test(videoLink);
   const isCdnJumpShareLink = videoLink.includes("cdn.jumpshare.com");
-  const isKnownEmbed = videoLink.includes("youtube.com") || videoLink.includes("youtu.be") || videoLink.includes("vimeo.com") || videoLink.includes("facebook.com") || videoLink.includes("fb.watch") || videoLink.includes("dailymotion.com") || videoLink.includes("dai.ly") || videoLink.includes("t.me/") || videoLink.includes("telegram.") || videoLink.includes("dropbox.com") || videoLink.includes("player.cloudinary.com") || isCdnJumpShareLink || isJumpShare;
-  const needsProxy = (videoLink.includes("res.cloudinary.com") && /\/video\/upload\//i.test(videoLink));
+  const isKnownEmbed = videoLink.includes("youtube.com") || videoLink.includes("youtu.be") || videoLink.includes("vimeo.com") || videoLink.includes("facebook.com") || videoLink.includes("fb.watch") || videoLink.includes("dailymotion.com") || videoLink.includes("dai.ly") || videoLink.includes("t.me/") || videoLink.includes("telegram.") || videoLink.includes("dropbox.com") || videoLink.includes("player.cloudinary.com") || isJumpShare;
+  const needsProxy = isCdnJumpShareLink || (videoLink.includes("res.cloudinary.com") && /\/video\/upload\//i.test(videoLink));
   const proxiedSrc = needsProxy ? `/api/video-stream?url=${encodeURIComponent(videoLink)}` : null;
   const rawIsDirectVideo = dropboxStreamUrl || cloudinaryStreamUrl || autoDetectedDirect || proxiedSrc ? true : isObjectStorage || hasKnownExtension;
   const isDirectVideo = rawIsDirectVideo && !directVideoFailed;
