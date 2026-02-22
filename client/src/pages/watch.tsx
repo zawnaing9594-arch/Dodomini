@@ -171,26 +171,53 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
     if (v.paused) { v.play(); setShowBigPlay(false); } else v.pause();
   }, []);
 
+  const activateCssFullscreen = useCallback((el: HTMLElement) => {
+    el.classList.add("css-fullscreen");
+    document.body.style.overflow = "hidden";
+    setIsFullscreen(true);
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        el.classList.remove("css-fullscreen");
+        document.body.style.overflow = "";
+        setIsFullscreen(false);
+        document.removeEventListener("keydown", handleEsc);
+      }
+    };
+    document.addEventListener("keydown", handleEsc);
+  }, []);
+
   const toggleFullscreen = useCallback(async () => {
     const el = containerRef.current as any;
     if (!el) return;
     const doc = document as any;
+    const vid = videoRef.current as any;
     const nativeFS = !!(doc.fullscreenElement || doc.webkitFullscreenElement);
     const cssFS = el.classList.contains("css-fullscreen");
+    const vidFS = vid && vid.webkitDisplayingFullscreen;
 
     if (nativeFS) {
       try {
-        if (doc.exitFullscreen) { await doc.exitFullscreen(); }
-        else if (doc.webkitExitFullscreen) { doc.webkitExitFullscreen(); }
+        if (doc.exitFullscreen) await doc.exitFullscreen();
+        else if (doc.webkitExitFullscreen) doc.webkitExitFullscreen();
       } catch {}
       return;
     }
-
+    if (vidFS) {
+      try { vid.webkitExitFullscreen(); } catch {}
+      return;
+    }
     if (cssFS) {
       el.classList.remove("css-fullscreen");
       document.body.style.overflow = "";
       setIsFullscreen(false);
       return;
+    }
+
+    if (vid && vid.webkitEnterFullscreen) {
+      try {
+        vid.webkitEnterFullscreen();
+        return;
+      } catch {}
     }
 
     let entered = false;
@@ -207,20 +234,9 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
     } catch {}
 
     if (!entered) {
-      el.classList.add("css-fullscreen");
-      document.body.style.overflow = "hidden";
-      setIsFullscreen(true);
-      const handleEsc = (e: KeyboardEvent) => {
-        if (e.key === "Escape") {
-          el.classList.remove("css-fullscreen");
-          document.body.style.overflow = "";
-          setIsFullscreen(false);
-          document.removeEventListener("keydown", handleEsc);
-        }
-      };
-      document.addEventListener("keydown", handleEsc);
+      activateCssFullscreen(el);
     }
-  }, [containerRef]);
+  }, [containerRef, activateCssFullscreen]);
 
   const handleProgressClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!videoRef.current || !progressRef.current) return;
