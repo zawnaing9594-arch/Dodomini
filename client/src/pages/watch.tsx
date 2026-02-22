@@ -130,6 +130,11 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
   const [embedSubTime, setEmbedSubTime] = useState(0);
   const embedSubTimerRef = useRef<ReturnType<typeof setInterval>>();
   const embedSubStartTimeRef = useRef(0);
+  const [videoReady, setVideoReady] = useState(false);
+
+  useEffect(() => {
+    setVideoReady(false);
+  }, [directSrc]);
 
   useEffect(() => {
     if (hasKnownExtension || isKnownEmbed || isObjectStorage || dropboxStreamUrl || cloudinaryStreamUrl) return;
@@ -173,7 +178,7 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
   }, [srtLink]);
 
   useEffect(() => {
-    if (!srtCues.length || !videoRef.current) return;
+    if (!srtCues.length || !videoRef.current || !videoReady) return;
     const video = videoRef.current;
     const onTimeUpdate = () => {
       const t = video.currentTime;
@@ -182,10 +187,10 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
     };
     video.addEventListener("timeupdate", onTimeUpdate);
     return () => video.removeEventListener("timeupdate", onTimeUpdate);
-  }, [srtCues, jumpShareLoading, isDirectVideo]);
+  }, [srtCues, videoReady]);
 
   useEffect(() => {
-    if (!srtCues.length || !videoRef.current) return;
+    if (!srtCues.length || !videoRef.current || !videoReady) return;
     const video = videoRef.current;
     let track: TextTrack | null = null;
     for (let i = 0; i < video.textTracks.length; i++) {
@@ -230,7 +235,7 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
       document.removeEventListener("fullscreenchange", syncTrackMode);
       document.removeEventListener("webkitfullscreenchange", syncTrackMode);
     };
-  }, [srtCues, subsOn, jumpShareLoading, isDirectVideo]);
+  }, [srtCues, subsOn, videoReady]);
 
   useEffect(() => {
     const handleFS = () => {
@@ -408,7 +413,10 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
             }
           }}
           onLoadedMetadata={() => {
-            if (videoRef.current) setDuration(videoRef.current.duration);
+            if (videoRef.current) {
+              setDuration(videoRef.current.duration);
+              setVideoReady(true);
+            }
           }}
           onProgress={() => {
             if (videoRef.current && videoRef.current.buffered.length > 0) {
@@ -420,6 +428,9 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
               setVolume(videoRef.current.volume);
               setIsMuted(videoRef.current.muted);
             }
+          }}
+          onCanPlay={() => {
+            if (!videoReady) setVideoReady(true);
           }}
           onError={() => {
             if (embedUrl && embedUrl !== videoLink) {
