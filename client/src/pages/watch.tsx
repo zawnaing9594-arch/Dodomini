@@ -81,7 +81,7 @@ function getCloudinaryStreamUrl(url: string): string | null {
 }
 
 function isJumpShareLink(url: string): boolean {
-  return url.includes("jumpshare.com/s/") || url.includes("jumpshare.com/v/") || url.includes("jmp.sh/") || url.includes("jumpshare.com/embed/");
+  return (url.includes("jumpshare.com/s/") || url.includes("jumpshare.com/v/") || url.includes("jmp.sh/")) && !url.includes("jumpshare.com/embed/");
 }
 
 
@@ -439,7 +439,7 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
             if (!videoReady) setVideoReady(true);
           }}
           onError={() => {
-            if (embedUrl && embedUrl !== videoLink) {
+            if (jumpShareResolvedUrl || dropboxStreamUrl || cloudinaryStreamUrl || autoDetectedDirect || (embedUrl && embedUrl !== videoLink)) {
               setDirectVideoFailed(true);
             }
           }}
