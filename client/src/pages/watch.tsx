@@ -56,6 +56,20 @@ function getDropboxStreamUrl(url: string): string | null {
 }
 
 function getCloudinaryStreamUrl(url: string): string | null {
+  if (url.includes("player.cloudinary.com/embed")) {
+    try {
+      const u = new URL(url);
+      const cloudName = u.searchParams.get("cloud_name");
+      const publicId = u.searchParams.get("public_id");
+      if (cloudName && publicId) {
+        const format = u.searchParams.get("format") || "mp4";
+        const hasExt = /\.\w{2,5}$/.test(publicId);
+        const directUrl = `https://res.cloudinary.com/${cloudName}/video/upload/${hasExt ? publicId : `${publicId}.${format}`}`;
+        return `/api/video-stream?url=${encodeURIComponent(directUrl)}`;
+      }
+    } catch {}
+    return null;
+  }
   if (!url.includes("res.cloudinary.com")) return null;
   return `/api/video-stream?url=${encodeURIComponent(url)}`;
 }
@@ -88,7 +102,7 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
   const [directVideoFailed, setDirectVideoFailed] = useState(false);
   const [autoDetectedDirect, setAutoDetectedDirect] = useState<string | null>(null);
   const hasKnownExtension = /\.(mp4|webm|m3u8|mov|avi|mkv)(\?.*)?$/i.test(videoLink);
-  const isKnownEmbed = videoLink.includes("youtube.com") || videoLink.includes("youtu.be") || videoLink.includes("vimeo.com") || videoLink.includes("facebook.com") || videoLink.includes("fb.watch") || videoLink.includes("dailymotion.com") || videoLink.includes("dai.ly") || videoLink.includes("t.me/") || videoLink.includes("telegram.") || videoLink.includes("dropbox.com") || isJumpShare;
+  const isKnownEmbed = videoLink.includes("youtube.com") || videoLink.includes("youtu.be") || videoLink.includes("vimeo.com") || videoLink.includes("facebook.com") || videoLink.includes("fb.watch") || videoLink.includes("dailymotion.com") || videoLink.includes("dai.ly") || videoLink.includes("t.me/") || videoLink.includes("telegram.") || videoLink.includes("dropbox.com") || videoLink.includes("player.cloudinary.com") || isJumpShare;
   const rawIsDirectVideo = dropboxStreamUrl || cloudinaryStreamUrl || jumpShareResolvedUrl || autoDetectedDirect ? true : isObjectStorage || hasKnownExtension;
   const isDirectVideo = rawIsDirectVideo && !directVideoFailed;
   const directSrc = dropboxStreamUrl || cloudinaryStreamUrl || jumpShareResolvedUrl || autoDetectedDirect || videoLink;
@@ -188,7 +202,9 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
     }
     for (const cue of srtCues) {
       try {
-        track.addCue(new VTTCue(cue.startTime, cue.endTime, cue.text));
+        const vttCue = new VTTCue(cue.startTime, cue.endTime, cue.text);
+        vttCue.line = -4;
+        track.addCue(vttCue);
       } catch {}
     }
     track.mode = subsOn ? "showing" : "hidden";
@@ -413,20 +429,19 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
         />
 
         <div
-          className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between p-3 md:p-4 transition-opacity duration-300 pointer-events-none"
+          className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between p-3 md:p-4 pointer-events-none"
           style={{
-            opacity: showControls ? 1 : 0.85,
-            background: showControls ? "linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%)" : "none",
+            background: "linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, transparent 100%)",
             paddingBottom: "40px",
           }}
         >
           {(epTitle || seriesTitle) && (
             <div className="min-w-0 flex-1">
               {seriesTitle && (
-                <p className="text-white/70 text-xs md:text-sm truncate" style={{ textShadow: "0 1px 6px rgba(0,0,0,0.9)" }} data-testid="video-series-title">{seriesTitle}</p>
+                <p className="text-white/80 text-xs md:text-sm truncate" style={{ textShadow: "0 1px 8px rgba(0,0,0,1), 0 0 4px rgba(0,0,0,0.8)" }} data-testid="video-series-title">{seriesTitle}</p>
               )}
               {epTitle && (
-                <p className="text-white font-medium text-sm md:text-base truncate" style={{ textShadow: "0 1px 6px rgba(0,0,0,0.9)" }} data-testid="video-ep-title">{epTitle}</p>
+                <p className="text-white font-medium text-sm md:text-base truncate" style={{ textShadow: "0 1px 8px rgba(0,0,0,1), 0 0 4px rgba(0,0,0,0.8)" }} data-testid="video-ep-title">{epTitle}</p>
               )}
             </div>
           )}
@@ -434,7 +449,7 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
             src={logoImg}
             alt="Series Plus"
             className="shrink-0 ml-2"
-            style={{ height: isFullscreen ? "56px" : "44px", width: "auto", borderRadius: "6px", filter: showControls ? "none" : "drop-shadow(0 1px 4px rgba(0,0,0,0.8))" }}
+            style={{ height: isFullscreen ? "56px" : "44px", width: "auto", borderRadius: "6px", filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.9))" }}
             data-testid="video-logo"
           />
         </div>
@@ -451,7 +466,7 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
           <div
             className="absolute left-1/2 -translate-x-1/2 z-20 text-center pointer-events-none px-2"
             style={{
-              bottom: showControls ? (isFullscreen ? "100px" : "64px") : (isFullscreen ? "48px" : "20px"),
+              bottom: showControls ? (isFullscreen ? "120px" : "64px") : (isFullscreen ? "80px" : "20px"),
               transition: "bottom 0.3s ease",
               maxWidth: isFullscreen ? "80%" : "92%",
             }}
@@ -631,7 +646,7 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
   const embedSubDisplay = subsOn && currentSub && embedSubStarted && (
     <div
       className="absolute left-1/2 -translate-x-1/2 z-30 text-center pointer-events-none px-2"
-      style={{ bottom: isFullscreen ? "60px" : "48px", maxWidth: "90%" }}
+      style={{ bottom: isFullscreen ? "80px" : "48px", maxWidth: "90%" }}
       data-testid="embed-subtitle-display"
     >
       <span
