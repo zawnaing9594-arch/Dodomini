@@ -139,13 +139,21 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
     const handleFS = () => {
       const nativeFS = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
       const cssFS = containerRef.current?.classList.contains("css-fullscreen") || false;
-      setIsFullscreen(nativeFS || cssFS);
+      const inFS = nativeFS || cssFS;
+      setIsFullscreen(inFS);
+      if (!inFS) {
+        document.body.style.overflow = "";
+      }
     };
     document.addEventListener("fullscreenchange", handleFS);
     document.addEventListener("webkitfullscreenchange", handleFS);
     return () => {
       document.removeEventListener("fullscreenchange", handleFS);
       document.removeEventListener("webkitfullscreenchange", handleFS);
+      document.body.style.overflow = "";
+      if (containerRef.current) {
+        containerRef.current.classList.remove("css-fullscreen");
+      }
     };
   }, [containerRef]);
 
@@ -662,7 +670,11 @@ function VideoContainer({ embedUrl, videoLink, srtLink, epTitle, seriesTitle }: 
     const handleChange = () => {
       const nativeFS = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
       const cssFS = containerRef.current?.classList.contains("css-fullscreen") || false;
-      setIsFullscreen(nativeFS || cssFS);
+      const inFS = nativeFS || cssFS;
+      setIsFullscreen(inFS);
+      if (!inFS) {
+        document.body.style.overflow = "";
+      }
     };
     document.addEventListener("fullscreenchange", handleChange);
     document.addEventListener("webkitfullscreenchange", handleChange);
@@ -673,7 +685,11 @@ function VideoContainer({ embedUrl, videoLink, srtLink, epTitle, seriesTitle }: 
       observer = new MutationObserver(() => {
         const cssFS = el.classList.contains("css-fullscreen");
         const nativeFS = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
-        setIsFullscreen(nativeFS || cssFS);
+        const inFS = nativeFS || cssFS;
+        setIsFullscreen(inFS);
+        if (!inFS) {
+          document.body.style.overflow = "";
+        }
       });
       observer.observe(el, { attributes: true, attributeFilter: ["class"] });
     }
@@ -682,6 +698,10 @@ function VideoContainer({ embedUrl, videoLink, srtLink, epTitle, seriesTitle }: 
       document.removeEventListener("fullscreenchange", handleChange);
       document.removeEventListener("webkitfullscreenchange", handleChange);
       observer?.disconnect();
+      document.body.style.overflow = "";
+      if (containerRef.current) {
+        containerRef.current.classList.remove("css-fullscreen");
+      }
     };
   }, []);
 
