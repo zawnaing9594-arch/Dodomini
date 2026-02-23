@@ -5,7 +5,7 @@ import { type Content, type Episode, insertContentSchema } from "@shared/schema"
 import { z } from "zod";
 import { Link, useLocation } from "wouter";
 import {
-  Plus, Trash2, Upload, Film, ArrowLeft, ChevronDown, ChevronUp, Tv, Play, ImagePlus, X, Loader2, Lock, Pencil, KeyRound, Star, GripVertical, Image, Minus, Settings, ArrowRightLeft, ArrowUp, ArrowDown, FileText,
+  Plus, Trash2, Upload, Film, ArrowLeft, ChevronDown, ChevronUp, Tv, Play, ImagePlus, X, Loader2, Lock, Pencil, KeyRound, Star, GripVertical, Image, Minus, Settings, ArrowRightLeft, ArrowUp, ArrowDown, FileText, Link2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -690,11 +690,11 @@ function EditEpisodeDialog({ ep, contentId }: { ep: Episode; contentId: number }
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">Subtitle File - SRT/VTT/ASS (optional)</label>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-2">
               {srtLink ? (
-                <div className="flex items-center gap-2 flex-1 min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
                   <FileText className="w-4 h-4 text-green-400 shrink-0" />
-                  <span className="text-xs text-muted-foreground truncate">{srtLink.split("/").pop()}</span>
+                  <span className="text-xs text-muted-foreground truncate flex-1">{srtLink.split("/").pop()}</span>
                   <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" onClick={() => setSrtLink("")}>
                     <X className="w-3 h-3" />
                   </Button>
@@ -702,44 +702,72 @@ function EditEpisodeDialog({ ep, contentId }: { ep: Episode; contentId: number }
               ) : (
                 <span className="text-xs text-muted-foreground">No subtitle</span>
               )}
-              <label className="cursor-pointer">
-                <input
-                  type="file"
-                  accept=".srt,.vtt,.ass,.ssa,text/plain,application/x-subrip,*/*"
-                  className="hidden"
-                  data-testid={`input-edit-ep-srt-${ep.epId}`}
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const validExts = [".srt", ".vtt", ".ass", ".ssa"];
-                    const ext = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
-                    if (!validExts.includes(ext)) {
-                      toast({ title: "SRT, VTT, ASS, SSA ဖိုင်သာ ရွေးပါ", variant: "destructive" });
-                      e.target.value = "";
-                      return;
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Subtitle link (URL) ထည့်ပါ"
+                  className="flex-1 text-xs h-8"
+                  data-testid={`input-edit-ep-srt-link-${ep.epId}`}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const val = (e.target as HTMLInputElement).value.trim();
+                      if (val) {
+                        setSrtLink(val);
+                        (e.target as HTMLInputElement).value = "";
+                        toast({ title: "Subtitle link added" });
+                      }
                     }
-                    try {
-                      const metaRes = await fetch("/api/uploads/request-url", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ name: file.name, size: file.size, contentType: "text/plain" }),
-                      });
-                      if (!metaRes.ok) throw new Error("Failed to get upload URL");
-                      const { uploadURL, objectPath } = await metaRes.json();
-                      const uploadRes = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": "text/plain" } });
-                      if (!uploadRes.ok) throw new Error("Upload failed");
-                      setSrtLink(objectPath);
-                      toast({ title: "Subtitle file uploaded" });
-                    } catch {
-                      toast({ title: "Upload failed", variant: "destructive" });
-                    }
-                    e.target.value = "";
                   }}
                 />
-                <Button size="sm" variant="outline" asChild>
-                  <span><Upload className="w-3 h-3 mr-1" />Upload Sub</span>
+                <Button size="sm" variant="outline" className="shrink-0" onClick={() => {
+                  const input = document.querySelector(`[data-testid="input-edit-ep-srt-link-${ep.epId}"]`) as HTMLInputElement;
+                  if (input?.value.trim()) {
+                    setSrtLink(input.value.trim());
+                    input.value = "";
+                    toast({ title: "Subtitle link added" });
+                  }
+                }}>
+                  <Link2 className="w-3 h-3 mr-1" />Link
                 </Button>
-              </label>
+                <label className="cursor-pointer shrink-0">
+                  <input
+                    type="file"
+                    accept=".srt,.vtt,.ass,.ssa,text/plain,application/x-subrip,*/*"
+                    className="hidden"
+                    data-testid={`input-edit-ep-srt-${ep.epId}`}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const validExts = [".srt", ".vtt", ".ass", ".ssa"];
+                      const ext = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
+                      if (!validExts.includes(ext)) {
+                        toast({ title: "SRT, VTT, ASS, SSA ဖိုင်သာ ရွေးပါ", variant: "destructive" });
+                        e.target.value = "";
+                        return;
+                      }
+                      try {
+                        const metaRes = await fetch("/api/uploads/request-url", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ name: file.name, size: file.size, contentType: "text/plain" }),
+                        });
+                        if (!metaRes.ok) throw new Error("Failed to get upload URL");
+                        const { uploadURL, objectPath } = await metaRes.json();
+                        const uploadRes = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": "text/plain" } });
+                        if (!uploadRes.ok) throw new Error("Upload failed");
+                        setSrtLink(objectPath);
+                        toast({ title: "Subtitle file uploaded" });
+                      } catch {
+                        toast({ title: "Upload failed", variant: "destructive" });
+                      }
+                      e.target.value = "";
+                    }}
+                  />
+                  <Button size="sm" variant="outline" asChild>
+                    <span><Upload className="w-3 h-3 mr-1" />File</span>
+                  </Button>
+                </label>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
