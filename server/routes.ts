@@ -52,9 +52,19 @@ function resolveCloudinaryUrl(url: string): string | null {
   return null;
 }
 
+function resolveDropboxUrl(url: string): string | null {
+  if (!url.includes("dropbox.com")) return null;
+  const cleaned = url.replace(/[?&]dl=[01]/, "").replace(/\?$/, "");
+  return cleaned + (cleaned.includes("?") ? "&raw=1" : "?raw=1");
+}
+
 async function autoResolveVideoLink(videoLink: string, forStorage = false): Promise<string> {
   if (videoLink.includes("player.cloudinary.com")) {
     const resolved = resolveCloudinaryUrl(videoLink);
+    if (resolved) return resolved;
+  }
+  if (videoLink.includes("dropbox.com")) {
+    const resolved = resolveDropboxUrl(videoLink);
     if (resolved) return resolved;
   }
   if (!forStorage) {
