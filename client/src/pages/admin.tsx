@@ -27,6 +27,103 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useRef, useCallback, useEffect } from "react";
 
+type RecoveredVideo = {
+  objectPath: string;
+  contentType: string;
+  size: number;
+  createdAt: string | null;
+};
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(bytes >= 100 * 1024 * 1024 ? 0 : 1)} MB`;
+}
+
+function formatUploadDate(value: string | null) {
+  if (!value) return "Unknown date";
+  return new Date(value).toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function RecoveredVideoPicker({
+  onSelect,
+  testId,
+}: {
+  onSelect: (objectPath: string) => void;
+  testId: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const { data: videos, isLoading } = useQuery<RecoveredVideo[]>({
+    queryKey: ["/api/uploads/videos"],
+    enabled: open,
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button type="button" size="sm" variant="outline" data-testid={testId}>
+          <Film className="w-3 h-3 mr-1" />
+          Old uploads
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Recover an old video upload</DialogTitle>
+        </DialogHeader>
+        <p className="text-xs text-muted-foreground">
+          These video files were found in storage but are not linked to an episode yet.
+          Choose one to use it here.
+        </p>
+        {isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-24 rounded-md" />
+            <Skeleton className="h-24 rounded-md" />
+          </div>
+        ) : !videos || videos.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-6 text-center">No old video uploads found.</p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {videos.map((video) => (
+              <Card key={video.objectPath} className="overflow-hidden">
+                <video
+                  src={video.objectPath}
+                  controls
+                  preload="metadata"
+                  className="w-full aspect-video bg-black object-contain"
+                />
+                <div className="p-3 space-y-2">
+                  <div className="text-xs text-muted-foreground space-y-0.5">
+                    <p>{formatFileSize(video.size)} · {video.contentType.replace("video/", "").toUpperCase()}</p>
+                    <p>{formatUploadDate(video.createdAt)}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => {
+                      onSelect(video.objectPath);
+                      setOpen(false);
+                    }}
+                    data-testid={`${testId}-select-${video.objectPath.split("/").pop()}`}
+                  >
+                    <Link2 className="w-3 h-3 mr-1" />
+                    Use this video
+                  </Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 const contentFormSchema = insertContentSchema.extend({
   title: z.string().min(1, "Title is required"),
   poster: z.string().min(1, "Poster is required"),
@@ -506,6 +603,10 @@ function AddEpisodeInline({ contentId }: { contentId: number }) {
           onUploaded={(url) => setLink(url)}
           testId={`button-upload-video-add-${contentId}`}
         />
+        <RecoveredVideoPicker
+          onSelect={setLink}
+          testId={`button-recover-video-add-${contentId}`}
+        />
         <Button
           size="sm"
           disabled={addMutation.isPending || !title || !link}
@@ -685,6 +786,10 @@ function EditEpisodeDialog({ ep, contentId }: { ep: Episode; contentId: number }
               <VideoUploadButton
                 onUploaded={(url) => setVideoLink(url)}
                 testId={`button-upload-video-${ep.epId}`}
+              />
+              <RecoveredVideoPicker
+                onSelect={setVideoLink}
+                testId={`button-recover-video-${ep.epId}`}
               />
             </div>
           </div>
@@ -1199,6 +1304,32 @@ function FontSizeSettings() {
   );
 }
 
+function RecoveredUploadsSummary({ videos }: { videos: RecoveredVideo[] | undefined }) {
+  if (!videos || videos.length === 0) return null;
+
+  return (
+    <Card className="p-4 border-primary/30 bg-primary/5">
+      <div className="flex items-start gap-3">
+        <Film className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold">Recovered video uploads</h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            {videos.length} old video file{videos.length === 1 ? "" : "s"} are still available in storage,
+            but were not linked to an episode. Open an episode and choose <strong>Old uploads</strong> to restore one.
+          </p>
+          <div className="flex flex-wrap gap-1.5 mt-3">
+            {videos.map((video, index) => (
+              <Badge key={video.objectPath} variant="secondary" className="text-[10px]">
+                Video {index + 1} · {formatFileSize(video.size)}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 export default function Admin() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -1208,6 +1339,11 @@ export default function Admin() {
 
   const { data: allContent, isLoading } = useQuery<Content[]>({
     queryKey: ["/api/content"],
+    enabled: authed,
+  });
+
+  const { data: recoveredVideos } = useQuery<RecoveredVideo[]>({
+    queryKey: ["/api/uploads/videos"],
     enabled: authed,
   });
 
@@ -1282,6 +1418,7 @@ export default function Admin() {
 
       <div className="px-4 md:px-8 lg:px-12 py-6 max-w-4xl mx-auto space-y-8">
         <FontSizeSettings />
+        <RecoveredUploadsSummary videos={recoveredVideos} />
 
         {allContent && allContent.length > 0 && (
           <BannerManagement allContent={allContent} />

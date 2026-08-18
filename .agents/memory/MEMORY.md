@@ -1,0 +1,1 @@
+- [Object upload recovery](object-upload-recovery.md) — persist media metadata and provide an admin relinking path for orphaned storage objects.

@@ -2,7 +2,11 @@ import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertContentSchema, insertEpisodeSchema } from "@shared/schema";
-import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
+import {
+  ObjectStorageService,
+  objectStorageClient,
+  registerObjectStorageRoutes,
+} from "./replit_integrations/object_storage";
 import webpush from "web-push";
 
 const jumpShareCache = new Map<string, { url: string; ts: number }>();
@@ -103,6 +107,57 @@ export async function registerRoutes(
 ): Promise<Server> {
 
   registerObjectStorageRoutes(app);
+
+  app.get("/api/uploads/videos", async (req, res) => {
+    if (!(req.session as any)?.isAdmin) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const privateObjectDir = objectStorageService.getPrivateObjectDir();
+      const pathParts = privateObjectDir.replace(/^\/+/, "").split("/");
+      const bucketName = pathParts.shift();
+      const privatePrefix = pathParts.join("/");
+
+      if (!bucketName || !privatePrefix) {
+        return res.status(500).json({ error: "Private object storage is not configured" });
+      }
+
+      const [files] = await objectStorageClient
+        .bucket(bucketName)
+        .getFiles({ prefix: `${privatePrefix}/uploads/` });
+
+      const videos = await Promise.all(
+        files.map(async (file) => {
+          const [metadata] = await file.getMetadata();
+          const contentType = metadata.contentType || "application/octet-stream";
+          if (!contentType.startsWith("video/")) return null;
+
+          const entityId = file.name.startsWith(`${privatePrefix}/`)
+            ? file.name.slice(privatePrefix.length + 1)
+            : "";
+          if (!entityId) return null;
+
+          return {
+            objectPath: `/objects/${entityId}`,
+            contentType,
+            size: Number(metadata.size || 0),
+            createdAt: metadata.timeCreated || null,
+          };
+        }),
+      );
+
+      res.json(
+        videos
+          .filter((video): video is NonNullable<typeof video> => Boolean(video))
+          .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")),
+      );
+    } catch (error) {
+      console.error("Error listing recovered video uploads:", error);
+      res.status(500).json({ error: "Failed to list recovered video uploads" });
+    }
+  });
 
   setTimeout(() => autoResolveExistingEpisodes(), 5000);
 
