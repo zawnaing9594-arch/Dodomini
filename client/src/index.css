@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&family=Noto+Sans+Myanmar:wght@400;500;600;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -9,44 +10,44 @@
   --opaque-button-border-intensity: -8;
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
-  --background: 230 15% 5%;
-  --foreground: 0 0% 95%;
-  --border: 230 10% 15%;
-  --card: 230 15% 8%;
-  --card-foreground: 0 0% 95%;
-  --card-border: 230 10% 12%;
-  --sidebar: 230 15% 7%;
-  --sidebar-foreground: 0 0% 95%;
-  --sidebar-border: 230 10% 14%;
-  --sidebar-primary: 0 85% 48%;
+  --background: 222 22% 7%;
+  --foreground: 38 28% 94%;
+  --border: 222 15% 18%;
+  --card: 222 20% 11%;
+  --card-foreground: 38 28% 94%;
+  --card-border: 222 15% 18%;
+  --sidebar: 222 22% 7%;
+  --sidebar-foreground: 38 28% 94%;
+  --sidebar-border: 222 15% 18%;
+  --sidebar-primary: 15 76% 58%;
   --sidebar-primary-foreground: 0 0% 98%;
-  --sidebar-accent: 230 10% 13%;
-  --sidebar-accent-foreground: 0 0% 95%;
-  --sidebar-ring: 0 85% 48%;
-  --popover: 230 15% 10%;
-  --popover-foreground: 0 0% 95%;
-  --popover-border: 230 10% 16%;
-  --primary: 0 85% 48%;
-  --primary-foreground: 0 0% 98%;
-  --secondary: 230 10% 14%;
-  --secondary-foreground: 0 0% 95%;
-  --muted: 230 10% 13%;
-  --muted-foreground: 230 5% 55%;
-  --accent: 230 8% 12%;
-  --accent-foreground: 0 0% 95%;
-  --destructive: 0 85% 40%;
+  --sidebar-accent: 222 15% 15%;
+  --sidebar-accent-foreground: 38 28% 94%;
+  --sidebar-ring: 15 76% 58%;
+  --popover: 222 20% 11%;
+  --popover-foreground: 38 28% 94%;
+  --popover-border: 222 15% 18%;
+  --primary: 15 76% 58%;
+  --primary-foreground: 222 30% 8%;
+  --secondary: 222 15% 17%;
+  --secondary-foreground: 38 28% 94%;
+  --muted: 222 15% 15%;
+  --muted-foreground: 220 12% 65%;
+  --accent: 42 55% 17%;
+  --accent-foreground: 38 28% 94%;
+  --destructive: 0 65% 48%;
   --destructive-foreground: 0 0% 98%;
-  --input: 230 10% 22%;
-  --ring: 0 85% 48%;
+  --input: 222 15% 24%;
+  --ring: 15 76% 58%;
   --chart-1: 12 76% 55%;
   --chart-2: 173 58% 50%;
   --chart-3: 197 37% 50%;
   --chart-4: 43 74% 55%;
   --chart-5: 27 87% 50%;
-  --font-sans: 'Inter', 'Noto Sans Myanmar', sans-serif;
+  --font-sans: 'DM Sans', 'Noto Sans Myanmar', sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
-  --radius: .5rem;
+  --radius: .8rem;
   --shadow-2xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
   --shadow-xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
   --shadow-sm: 0px 2px 0px 0px hsl(0 0% 0% / 0.00), 0px 1px 2px -1px hsl(0 0% 0% / 0.00);
@@ -172,7 +173,18 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    background-image: radial-gradient(circle at 12% 0%, hsl(15 55% 20% / .16), transparent 28rem), radial-gradient(circle at 90% 15%, hsl(42 45% 18% / .12), transparent 24rem);
   }
+}
+
+@layer utilities {
+  .font-display { font-family: 'Manrope', 'Noto Sans Myanmar', sans-serif; }
+  .cinema-shell { background: linear-gradient(180deg, hsl(222 22% 7% / .98), hsl(222 22% 7%)); }
+  .hero-vignette { background: linear-gradient(90deg, hsl(222 22% 7% / .96) 0%, hsl(222 22% 7% / .7) 36%, transparent 76%), linear-gradient(0deg, hsl(222 22% 7%) 0%, transparent 55%); }
+  .poster-lift { box-shadow: 0 24px 60px hsl(222 35% 3% / .55); }
+  .section-rule { border-top: 1px solid hsl(var(--border) / .75); }
+  .motion-rise { animation: motion-rise .65s cubic-bezier(.22,1,.36,1) both; }
+  @keyframes motion-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
 }
 
 /**

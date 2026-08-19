@@ -134,28 +134,28 @@ export default function SeriesDetail() {
 
   return (
     <div className="min-h-screen bg-background" data-testid="page-series-detail">
-      <div className="relative w-full h-[200px] md:h-[300px] overflow-hidden">
+      <div className="relative w-full h-[310px] md:h-[470px] overflow-hidden">
         <img
           src={item.poster}
           alt={item.title}
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-background/20" />
-        <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/40 to-transparent" />
+        <div className="absolute inset-0 hero-vignette" />
       </div>
 
-      <div className="relative -mt-32 md:-mt-40 z-10 px-4 md:px-8 lg:px-12 pb-12">
+      <div className="relative -mt-40 md:-mt-56 z-10 px-5 md:px-10 lg:px-16 pb-16">
         <div className="flex flex-col md:flex-row gap-6 md:gap-8">
-          <div className="shrink-0">
+          <div className="shrink-0 motion-rise">
             <img
               src={item.poster}
               alt={item.title}
-              className="w-[180px] md:w-[220px] rounded-md shadow-2xl"
+              className="w-[150px] md:w-[250px] rounded-xl poster-lift ring-1 ring-white/10"
               data-testid="img-series-thumb"
             />
           </div>
 
-          <div className="flex-1 min-w-0 pt-2">
+          <div className="flex-1 min-w-0 pt-3 md:pt-16 motion-rise">
+            <p className="text-primary uppercase tracking-[.28em] text-[10px] md:text-xs font-semibold mb-4">Series Myanmar original selection</p>
             <div className="flex items-center gap-3 flex-wrap mb-2">
               <Badge variant="secondary" className="capitalize">{item.type}</Badge>
               <Badge variant="secondary">
@@ -170,12 +170,12 @@ export default function SeriesDetail() {
               )}
             </div>
 
-            <h1 className="text-3xl md:text-4xl font-bold text-white mb-3" data-testid="text-series-title">
+            <h1 className="font-display text-4xl md:text-6xl font-extrabold tracking-tight text-white mb-4 leading-[.98]" data-testid="text-series-title">
               {item.title}
             </h1>
 
             {item.description && (
-              <p className="text-muted-foreground leading-relaxed max-w-2xl mb-6" data-testid="text-series-description">
+              <p className="text-white/65 leading-relaxed max-w-2xl mb-7 text-sm md:text-base" data-testid="text-series-description">
                 {item.description}
               </p>
             )}
@@ -183,13 +183,13 @@ export default function SeriesDetail() {
             <div className="flex items-center gap-3 flex-wrap">
               {episodes.length > 0 && (
                 <Link href={getShareUrl(episodes[0].epId, item.title, episodes[0].epTitle)}>
-                  <Button variant="default" data-testid="button-play-first">
+                    <Button variant="default" className="h-11 rounded-full px-5 font-semibold" data-testid="button-play-first">
                     <Play className="w-4 h-4 mr-2 fill-current" />
                     Play Episode 1
                   </Button>
                 </Link>
               )}
-              <Button variant="outline" onClick={handleShareSeries} data-testid="button-share-series">
+              <Button variant="outline" className="h-11 rounded-full px-5 border-white/15 bg-white/5" onClick={handleShareSeries} data-testid="button-share-series">
                 {copied ? <Check className="w-4 h-4 mr-2" /> : <Share2 className="w-4 h-4 mr-2" />}
                 {copied ? "Copied!" : "Share"}
               </Button>
@@ -198,9 +198,9 @@ export default function SeriesDetail() {
         </div>
 
         <div className="mt-10">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Tv className="w-5 h-5 text-primary" />
-            Episodes
+          <h2 className="font-display text-2xl font-bold mb-5 flex items-center gap-3 section-rule pt-7">
+            <span className="w-1 h-7 rounded-full bg-primary" />
+            Episodes <span className="text-sm font-normal text-muted-foreground">({episodes.length})</span>
           </h2>
 
           {loadingEpisodes ? (
@@ -221,13 +221,13 @@ export default function SeriesDetail() {
               <p className="text-muted-foreground text-sm">No episodes available yet</p>
             </Card>
           ) : (
-            <div className="flex flex-col divide-y divide-border/50">
+            <div className="flex flex-col divide-y divide-border/50 rounded-xl border border-border/70 overflow-hidden bg-card/35">
               {episodes.map((ep, index) => {
                 const thumb = getVideoThumbnail(ep.videoLink) || item.poster;
                 return (
                   <Link key={ep.epId} href={getShareUrl(ep.epId, item.title, ep.epTitle)} className="block">
                     <div
-                      className="flex gap-4 py-4 group cursor-pointer hover-elevate rounded-md px-1 -mx-1"
+                      className="flex gap-4 py-4 md:py-5 group cursor-pointer hover-elevate px-3 md:px-5"
                       data-testid={`card-episode-${ep.epId}`}
                     >
                       <div className="relative w-[140px] sm:w-[170px] shrink-0 aspect-video rounded-md overflow-hidden bg-muted">

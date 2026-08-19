@@ -34,7 +34,7 @@ function BannerCarousel({ banners }: { banners: Content[] }) {
   const banner = banners[current];
 
   return (
-    <div className="relative w-full aspect-[16/9] max-h-[50vh] overflow-hidden" data-testid="banner-carousel">
+    <div className="relative w-full min-h-[560px] md:min-h-[680px] overflow-hidden" data-testid="banner-carousel">
       {banners.map((b, i) => (
         <div
           key={b.id}
@@ -46,21 +46,23 @@ function BannerCarousel({ banners }: { banners: Content[] }) {
             alt={b.title}
             className="absolute inset-0 w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-r from-background/70 via-transparent to-transparent" />
+           <div className="absolute inset-0 hero-vignette" />
         </div>
       ))}
 
-      <div className="absolute bottom-8 left-0 right-0 px-6 md:px-12 z-10">
+       <div className="absolute bottom-14 md:bottom-20 left-0 right-0 px-5 md:px-12 lg:px-20 z-10 motion-rise">
+         <p className="text-primary uppercase tracking-[.28em] text-[10px] md:text-xs font-semibold mb-4">Tonight’s feature</p>
+         <h2 className="font-display text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight max-w-2xl text-white leading-[.98] mb-4">{banner.title}</h2>
+         {banner.description && <p className="text-sm md:text-base text-white/70 max-w-xl line-clamp-2 mb-7">{banner.description}</p>}
         <div className="flex items-center gap-3">
           <Link href={`/series/${banner.id}`}>
-            <Button variant="default" data-testid="button-watch-now">
+             <Button variant="default" className="h-11 px-5 rounded-full font-semibold" data-testid="button-watch-now">
               <Play className="w-4 h-4 mr-2 fill-current" />
               Watch Now
             </Button>
           </Link>
           <Link href={`/series/${banner.id}`}>
-            <Button variant="outline" className="bg-white/10 backdrop-blur-sm border-white/20 text-white" data-testid="button-details">
+             <Button variant="outline" className="h-11 px-5 rounded-full bg-white/10 backdrop-blur-sm border-white/20 text-white" data-testid="button-details">
               Details
             </Button>
           </Link>
@@ -288,16 +290,16 @@ function UserAuthButton() {
 function ContentCard({ item, isNew, titleClass }: { item: Content; isNew?: boolean; titleClass?: string }) {
   return (
     <Link href={`/series/${item.id}`}>
-      <div className="group relative cursor-pointer" data-testid={`card-content-${item.id}`}>
-        <div className="relative overflow-hidden rounded-md aspect-[3/4]">
+     <div className="group relative cursor-pointer motion-rise" data-testid={`card-content-${item.id}`}>
+         <div className="relative overflow-hidden rounded-xl aspect-[3/4] bg-muted poster-lift">
           <img
             src={item.poster}
             alt={item.title}
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <div className="w-12 h-12 rounded-full bg-primary/90 flex items-center justify-center">
+             <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-xl scale-90 group-hover:scale-100 transition-transform duration-300">
               <Play className="w-5 h-5 text-white fill-white" />
             </div>
           </div>
@@ -309,10 +311,10 @@ function ContentCard({ item, isNew, titleClass }: { item: Content; isNew?: boole
             </div>
           )}
         </div>
-        <p className={`mt-2 ${titleClass || "text-sm"} font-medium text-foreground truncate`} data-testid={`text-title-${item.id}`}>
+         <p className={`mt-3 ${titleClass || "text-sm"} font-semibold text-foreground truncate`} data-testid={`text-title-${item.id}`}>
           {item.title}
         </p>
-        <p className="text-xs text-muted-foreground capitalize">{item.type}</p>
+         <p className="text-[11px] text-muted-foreground capitalize tracking-wide">{item.type}</p>
       </div>
     </Link>
   );
@@ -449,11 +451,11 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background" data-testid="page-home">
-      <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-background/90 to-transparent">
-        <div className="flex items-center justify-between gap-4 px-4 md:px-8 lg:px-12 py-4">
+       <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-background/95 via-background/60 to-transparent">
+         <div className="flex items-center justify-between gap-4 px-5 md:px-10 lg:px-16 py-5">
           <Link href="/">
-            <h1 className="text-xl font-bold tracking-tight text-white cursor-pointer" data-testid="text-logo">
-              Series<span className="text-primary">Plus</span>
+             <h1 className="font-display text-xl font-extrabold tracking-tight text-white cursor-pointer" data-testid="text-logo">
+               Series<span className="text-primary">Plus</span><span className="text-white/40 text-[10px] ml-2 tracking-[.24em] uppercase">Myanmar</span>
             </h1>
           </Link>
           <div className="flex items-center gap-1">
@@ -549,7 +551,7 @@ export default function Home() {
 
       {isSearching && <div className="h-20" />}
 
-      <div className="px-4 md:px-8 lg:px-12 py-8 space-y-10">
+       <div className="px-5 md:px-10 lg:px-16 py-12 space-y-14">
         {isSearching && filteredContent.series.length === 0 && filteredContent.movies.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <Search className="w-16 h-16 text-muted-foreground/30 mb-4" />
@@ -560,11 +562,14 @@ export default function Home() {
 
         {filteredContent.series.length > 0 && (
           <section>
-            <div className="flex items-center gap-2 mb-5">
-              <Film className="w-5 h-5 text-primary" />
-              <h2 className={`${sizes.section} font-semibold`} data-testid="text-section-series">Series</h2>
+             <div className="flex items-end justify-between gap-2 mb-6 section-rule pt-6">
+               <div className="flex items-center gap-3">
+                 <span className="w-1 h-7 rounded-full bg-primary" />
+                 <div><p className="text-[10px] uppercase tracking-[.25em] text-primary mb-1">Browse the lobby</p><h2 className={`${sizes.section} font-display font-bold`} data-testid="text-section-series">Series</h2></div>
+               </div>
+               <span className="text-xs text-muted-foreground">{filteredContent.series.length} titles</span>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
+             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-4 gap-y-8 md:gap-x-6">
               {filteredContent.series.map((item) => (
                 <ContentCard key={item.id} item={item} isNew={newContentIds.has(item.id)} titleClass={sizes.card} />
               ))}
@@ -574,11 +579,14 @@ export default function Home() {
 
         {filteredContent.movies.length > 0 && (
           <section>
-            <div className="flex items-center gap-2 mb-5">
-              <Film className="w-5 h-5 text-primary" />
-              <h2 className={`${sizes.section} font-semibold`} data-testid="text-section-movies">Movies</h2>
+             <div className="flex items-end justify-between gap-2 mb-6 section-rule pt-6">
+               <div className="flex items-center gap-3">
+                 <span className="w-1 h-7 rounded-full bg-primary" />
+                 <div><p className="text-[10px] uppercase tracking-[.25em] text-primary mb-1">One sitting</p><h2 className={`${sizes.section} font-display font-bold`} data-testid="text-section-movies">Movies</h2></div>
+               </div>
+               <span className="text-xs text-muted-foreground">{filteredContent.movies.length} titles</span>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
+             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-4 gap-y-8 md:gap-x-6">
               {filteredContent.movies.map((item) => (
                 <ContentCard key={item.id} item={item} isNew={newContentIds.has(item.id)} titleClass={sizes.card} />
               ))}
