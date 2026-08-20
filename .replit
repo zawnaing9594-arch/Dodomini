@@ -49,3 +49,6 @@ VAPID_SUBJECT = "mailto:admin@seriesplus.app"
 
 [agent]
 integrations = ["javascript_object_storage:2.0.0", "javascript_log_in_with_replit:2.0.0"]
+
+[objectStorage]
+defaultBucketID = "replit-objstore-22eeeca7-80ef-4f3e-b176-d9c181ecb6f9"
