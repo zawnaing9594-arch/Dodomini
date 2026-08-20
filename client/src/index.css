@@ -348,3 +348,13 @@
     inset: -1px;
   }
 }
+
+/* Subtitle စာတန်းများ သပ်ရပ်စေရန် */
+video::cue {
+  background-color: rgba(0, 0, 0, 0.75);
+  color: #ffffff;
+  font-size: 16px;
+  text-align: center;
+  line-height: 1.4;
+  max-width: 80%;
+}
