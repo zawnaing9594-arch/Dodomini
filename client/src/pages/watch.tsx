@@ -98,7 +98,7 @@ function isMyanmarText(text: string): boolean {
   return /[\u1000-\u109F]/.test(text);
 }
 
-function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seriesTitle }: { embedUrl: string; videoLink: string; srtLink?: string | null; containerRef: React.RefObject<HTMLDivElement | null>; epTitle?: string; seriesTitle?: string }) {
+function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seriesTitle, onProgress }: { embedUrl: string; videoLink: string; srtLink?: string | null; containerRef: React.RefObject<HTMLDivElement | null>; epTitle?: string; seriesTitle?: string; onProgress?: (currentTime: number, duration: number) => void }) {
   const dropboxStreamUrl = getDropboxStreamUrl(videoLink);
   const cloudinaryStreamUrl = getCloudinaryStreamUrl(videoLink);
   const isJumpShare = isJumpShareLink(videoLink);
@@ -417,6 +417,7 @@ function VideoPlayer({ embedUrl, videoLink, srtLink, containerRef, epTitle, seri
           onTimeUpdate={() => {
             if (!isSeeking && videoRef.current) {
               setCurrentTime(videoRef.current.currentTime);
+              onProgress?.(videoRef.current.currentTime, videoRef.current.duration);
             }
           }}
           onLoadedMetadata={() => {
@@ -833,7 +834,7 @@ function DownloadButton({ videoLink, epId, epTitle }: { videoLink: string; epId:
   );
 }
 
-function VideoContainer({ embedUrl, videoLink, srtLink, epTitle, seriesTitle }: { embedUrl: string; videoLink: string; srtLink?: string | null; epTitle?: string; seriesTitle?: string }) {
+function VideoContainer({ embedUrl, videoLink, srtLink, epTitle, seriesTitle, onProgress }: { embedUrl: string; videoLink: string; srtLink?: string | null; epTitle?: string; seriesTitle?: string; onProgress?: (currentTime: number, duration: number) => void }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -883,7 +884,7 @@ function VideoContainer({ embedUrl, videoLink, srtLink, epTitle, seriesTitle }: 
       data-testid="video-container"
       onContextMenu={(e) => e.preventDefault()}
     >
-      <VideoPlayer embedUrl={embedUrl} videoLink={videoLink} srtLink={srtLink} containerRef={containerRef} epTitle={epTitle} seriesTitle={seriesTitle} />
+      <VideoPlayer embedUrl={embedUrl} videoLink={videoLink} srtLink={srtLink} containerRef={containerRef} epTitle={epTitle} seriesTitle={seriesTitle} onProgress={onProgress} />
     </div>
   );
 }
@@ -993,6 +994,23 @@ export default function Watch() {
 
   const prevEp = episodeData?.allEpisodes?.[currentEpIndex - 1];
   const nextEp = episodeData?.allEpisodes?.[currentEpIndex + 1];
+  const saveProgress = useCallback((currentTime: number, duration: number) => {
+    if (!episodeData || !Number.isFinite(currentTime)) return;
+    try {
+      const existing = JSON.parse(localStorage.getItem("continueWatching") || "[]");
+      const item = {
+        epId: episodeData.episode.epId,
+        contentId: episodeData.parent.id,
+        episodeTitle: episodeData.episode.epTitle,
+        contentTitle: episodeData.parent.title,
+        poster: episodeData.parent.poster,
+        progress: Number.isFinite(duration) && duration > 0 ? Math.min(1, currentTime / duration) : 0,
+        watchedAt: Date.now(),
+      };
+      const updated = [item, ...existing.filter((entry: { epId?: number }) => entry.epId !== item.epId)].slice(0, 6);
+      localStorage.setItem("continueWatching", JSON.stringify(updated));
+    } catch {}
+  }, [episodeData]);
 
   if (loadingEp) {
     return (
@@ -1098,7 +1116,14 @@ export default function Watch() {
         </div>
       ) : (
         <>
-          <VideoContainer embedUrl={embedUrl} videoLink={episode.videoLink} srtLink={episode.srtLink} epTitle={episode.epTitle} seriesTitle={parent.title} />
+          <VideoContainer
+            embedUrl={embedUrl}
+            videoLink={episode.videoLink}
+            srtLink={episode.srtLink}
+            epTitle={episode.epTitle}
+            seriesTitle={parent.title}
+            onProgress={saveProgress}
+          />
 
           <div className="px-4 md:px-8 py-6">
             <h2 className="text-xl font-semibold mb-1" data-testid="text-now-playing">

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { type Content, type Episode } from "@shared/schema";
-import { ChevronLeft, ChevronRight, Play, Film, Bell, X, Search, Type, Minus, Plus, User, LogOut, Download, BellRing } from "lucide-react";
+import { ChevronLeft, ChevronRight, Play, Film, Bell, X, Search, Type, Minus, Plus, User, LogOut, Download, BellRing, Clock3 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -391,6 +391,14 @@ export default function Home() {
   const [showSettings, setShowSettings] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [continueWatching, setContinueWatching] = useState<Array<{
+    epId: number;
+    contentId: number;
+    episodeTitle: string;
+    contentTitle: string;
+    poster: string;
+    progress: number;
+  }>>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
@@ -408,6 +416,13 @@ export default function Home() {
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("continueWatching") || "[]");
+      if (Array.isArray(saved)) setContinueWatching(saved.slice(0, 6));
+    } catch {}
   }, []);
 
   const suggestions = useMemo(() => {
@@ -552,6 +567,40 @@ export default function Home() {
       {isSearching && <div className="h-20" />}
 
        <div className="px-5 md:px-10 lg:px-16 py-12 space-y-14">
+         {!isSearching && continueWatching.length > 0 && (
+           <section data-testid="section-continue-watching">
+             <div className="flex items-end justify-between gap-2 mb-6 section-rule pt-6">
+               <div className="flex items-center gap-3">
+                 <span className="w-1 h-7 rounded-full bg-primary" />
+                 <div>
+                   <p className="text-[10px] uppercase tracking-[.25em] text-primary mb-1">Pick up where you left off</p>
+                   <h2 className={`${sizes.section} font-display font-bold`}>Continue Watching</h2>
+                 </div>
+               </div>
+             </div>
+             <div className="flex gap-4 overflow-x-auto pb-2 snap-x">
+               {continueWatching.map((item) => (
+                 <Link key={item.epId} href={`/watch/${item.epId}`} className="w-40 sm:w-48 shrink-0 snap-start group">
+                   <div className="relative aspect-video overflow-hidden rounded-lg bg-card border border-white/10">
+                     <img src={item.poster} alt={item.contentTitle} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent" />
+                     <div className="absolute bottom-0 left-0 right-0 p-3">
+                       <p className="text-[11px] text-white/60 truncate">{item.contentTitle}</p>
+                       <p className="text-sm text-white font-medium truncate">{item.episodeTitle}</p>
+                     </div>
+                     <div className="absolute left-0 right-0 bottom-0 h-1 bg-white/20">
+                       <div className="h-full bg-primary" style={{ width: `${Math.round((item.progress || 0) * 100)}%` }} />
+                     </div>
+                     <div className="absolute top-2 right-2 rounded-full bg-black/60 p-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                       <Clock3 className="w-3.5 h-3.5 text-white" />
+                     </div>
+                   </div>
+                 </Link>
+               ))}
+             </div>
+           </section>
+         )}
+
         {isSearching && filteredContent.series.length === 0 && filteredContent.movies.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <Search className="w-16 h-16 text-muted-foreground/30 mb-4" />
