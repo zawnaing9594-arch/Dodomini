@@ -12,6 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { toSlug, getShareUrl, getShareLink } from "@/lib/slugs";
 
+import { CustomVideoPlayer } from "@/components/VideoPlayer";
+
 function ShareButton({ contentId, episodeNumber, title }: { contentId: number; episodeNumber: number; title: string }) {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
@@ -427,8 +429,12 @@ export default function WatchSlug() {
       ) : (
         <>
           <div className="w-full aspect-video max-h-[70vh] bg-black">
-            <VideoPlayer embedUrl={embedUrl} videoLink={episode.videoLink} srtLink={episode.srtLink} />
+            <CustomVideoPlayer 
+              videoUrl={episode.videoLink} 
+              subtitleUrl={episode.srtLink} 
+            />
           </div>
+
 
           <div className="px-4 md:px-8 py-6">
             <h2 className="text-xl font-semibold mb-1" data-testid="text-now-playing">
